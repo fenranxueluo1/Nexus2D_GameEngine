@@ -1,0 +1,46 @@
+# ---------- CMake ----------
+build/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!**/CMakeLists.txt
+
+# ---------- Visual Studio ----------
+.vs/
+*.user
+*.suo
+*.sln
+*.vcxproj*
+!*.vcxproj
+!*.vcxproj.filters
+*.pdb
+*.ilk
+*.obj
+*.idb
+*.exp
+*.lib
+*.dll
+*.exe
+*.tlog
+*.recipe
+*.lastbuildstate
+
+# ---------- 编译器/链接器产物 ----------
+*.o
+*.a
+*.so
+*.dylib
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---------- 操作系统 ----------
+Thumbs.db
+desktop.ini
+.DS_Store
