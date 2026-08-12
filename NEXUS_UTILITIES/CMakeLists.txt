@@ -1,14 +1,7 @@
-cmake_minimum_required(VERSION 4.3.0)
+cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_UTILITIES
     LANGUAGES C CXX
 )
-
-# ---------- 编译选项 ----------
-if (MSVC)
-    add_compile_options(/W4 /utf-8)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
 
 # ---------- 目标 ----------
 add_library(NEXUS_UTILITIES STATIC)

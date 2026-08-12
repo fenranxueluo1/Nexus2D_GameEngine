@@ -1,14 +1,7 @@
-cmake_minimum_required(VERSION 4.3.0)
+cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_WINDOW
     LANGUAGES C CXX
 )
-
-# ---------- 编译选项 ----------
-if (MSVC)
-    add_compile_options(/W4 /utf-8)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
 
 # ---------- 引入 NEXUS_UTILITIES 子项目 ----------
 # 这样可以通过 target_link_libraries(NEXUS_WINDOW PRIVATE NEXUS_UTILITIES)

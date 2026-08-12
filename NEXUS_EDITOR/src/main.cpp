@@ -6,6 +6,59 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+class Camera2D
+{
+private:
+    int m_Width, m_Height;
+    float m_Scale;
+
+    glm::vec2 m_Position;
+    glm::mat4 m_CameraMatrix, m_OrthoProjection;
+
+    bool m_bNeedsUpdate;
+    
+public:
+    Camera2D() : Camera2D(640,480)
+    {
+
+    }
+    Camera2D(int width, int height) : m_Width{width}, m_Height{height}, m_Scale{1.f}, m_Position{glm::vec2{0}}, m_CameraMatrix{1.f}, m_OrthoProjection{1.f}, m_bNeedsUpdate{true}
+    {
+       m_OrthoProjection = glm::ortho(0.f, static_cast<float>(m_Width), static_cast<float>(m_Height), 0.f, 0.f, 1.f);
+    }
+
+    inline void SetScale(float scale) { m_Scale = scale; m_bNeedsUpdate = true; }
+
+    inline glm::mat4 GetCameraMatrix() { return m_CameraMatrix; }
+
+    void Update()
+    {
+        if(!m_bNeedsUpdate)
+        {
+            return;
+        }
+
+        glm::vec3 translate{ -m_Position.x, -m_Position.y, 0.f };
+        m_CameraMatrix = glm::translate(m_OrthoProjection, translate);
+
+        glm::vec3 scale{ m_Scale, m_Scale, 0.f };
+        m_CameraMatrix *= glm::scale(glm::mat4{1.f}, scale);
+
+        m_bNeedsUpdate = false;
+    }
+};
+
+struct UVs
+{
+    float u, v, width, height;
+    UVs() : u{0.f}, v{0.f}, width{0.f}, height{0.f}
+    {
+
+    }
+};
 
 bool LoadTexture(const std::string& filepath, int& width, int& height, bool blended)
 {
@@ -48,24 +101,15 @@ bool LoadTexture(const std::string& filepath, int& width, int& height, bool blen
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    // SDL 像素行序为自上而下，而 OpenGL 默认期望自下而上，翻转 Y 以避免上下颠倒。
-    // flipped 是紧密排列的 RGBA 数组（无 pitch padding），故 UNPACK_ROW_LENGTH 设 0。
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    // 直接使用 SDL 自上而下的像素行序。
+    // 不做 Y 翻转：纹理坐标 (0,0) 将对应原图左上角（与 SDL surface 的 (0,0) 一致）。
+    // 若翻转为 OpenGL 默认的“自下而上”，则 (0,0) 反而会指向原图左下角，导致画面上下颠倒。
+    // converted 的 pitch 可能含行尾 padding，需按 UNPACK_ROW_LENGTH 告知 GL 真实行步长。
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, converted->pitch / 4);
 
-    const int bytesPerPixel = 4;
-    const int rowBytes = width * bytesPerPixel;
-    std::vector<unsigned char> flipped(static_cast<size_t>(rowBytes) * height);
-    const unsigned char* src = static_cast<const unsigned char*>(converted->pixels);
-    unsigned char* dst = flipped.data();
-    for (int y = 0; y < height; ++y)
-    {
-        // 取第 (height-1-y) 行（SDL 自上而下）翻转到第 y 行（OpenGL 自下而上）
-        const unsigned char* srcRow = src + static_cast<size_t>(height - 1 - y) * converted->pitch;
-        std::memcpy(dst + static_cast<size_t>(y) * rowBytes, srcRow, rowBytes);
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped.data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
@@ -101,7 +145,7 @@ int main()
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
     //创建窗口
-    NEXUS_WINDOWING::Window window("测试窗口", 480, 480, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, true, SDL_WINDOW_OPENGL);
+    NEXUS_WINDOWING::Window window("测试窗口", 640, 480, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, true, SDL_WINDOW_OPENGL);
     
     if (!window.GetWindow())
     {
@@ -131,6 +175,10 @@ int main()
         return -1;
     }
 
+    //启用Alpha Blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     //临时加载纹理
     GLuint texID;
     glGenTextures(1, &texID);
@@ -143,12 +191,32 @@ int main()
         return -1;
     }
 
+    UVs uvs{};
+
+    auto generateUVs = [&](float startX, float startY, float spriteWidth, float spriteHeight)
+    {
+        // startX/startY/spriteWidth/spriteHeight 均为像素坐标，
+        // 转成归一化 UV 时直接除以纹理总宽/总高。
+        uvs.width  = spriteWidth  / width;
+        uvs.height = spriteHeight / height;
+
+        uvs.u = startX / width;
+        uvs.v = startY / height;
+    };
+
+    generateUVs(0, 0, 16, 16);
+
     //创建顶点数据
+    // 位置(x,y,z) | 纹理坐标(u,v)
+    // 屏幕坐标 y 向下：y=10 在上，y=26 在下。
+    // 已取消像素 Y 翻转：纹理 V=0 对应原图顶部，V 自上而下递增。
+    // 故屏幕上方顶点取子图顶部 V（uvs.v），下方顶点取底部 V（uvs.v + uvs.height）。
+    // 四个顶点按顺时针排列：左上 -> 右上 -> 右下 -> 左下
     float vertices[] = {
-        -0.5f, 0.5f, 0.0f,  0.f, 1.f,
-        0.5f, 0.5f, 0.0f,   1.f, 1.f,
-        0.5f, -0.5f, 0.0f,  1.f, 0.f,
-        -0.5f, -0.5f, 0.0f, 0.f, 0.f
+        10.f, 10.f, 0.0f,  uvs.u,              uvs.v,               // 屏幕左上 -> 子图左上
+        26.f, 10.f, 0.0f, (uvs.u + uvs.width), uvs.v,               // 屏幕右上 -> 子图右上
+        26.f, 26.f, 0.0f, (uvs.u + uvs.width),(uvs.v + uvs.height), // 屏幕右下 -> 子图右下
+        10.f, 26.f, 0.0f,  uvs.u,             (uvs.v + uvs.height)  // 屏幕左下 -> 子图左下
     };
  
     GLuint indices[] = 
@@ -157,15 +225,22 @@ int main()
         2, 3, 0
     };
 
+    //创建临时相机
+    Camera2D camera{};
+    camera.SetScale(5.f);
+    // 在使用相机矩阵前先更新一次，否则 GetCameraMatrix() 返回的是初始单位矩阵
+    camera.Update();
+
     //创建顶点着色器代码
     const char* vertexSource = 
         "#version 460 core\n"
         "layout (location = 0) in vec3 aPosition;\n"
         "layout (location = 1) in vec2 aTexCoords;\n"
         "out vec2 fragUVs;\n"
+        "uniform mat4 uProjection;\n"
         "void main()\n"
         "{\n"
-        "   gl_Position = vec4(aPosition, 1.0);\n"
+        "   gl_Position = uProjection * vec4(aPosition, 1.0);\n"
         "   fragUVs = aTexCoords;\n"
         "}\0";
 
@@ -298,10 +373,15 @@ int main()
             window.GetHeight()
         );
 
-        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClearColor(1.f, 1.f, 1.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
+
+        // 先更新相机，再取矩阵，确保本帧使用的是最新投影
+        camera.Update();
+        auto projection = camera.GetCameraMatrix();
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uProjection"), 1, GL_FALSE, &projection[0][0]);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texID);
@@ -309,7 +389,6 @@ int main()
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         glBindVertexArray(0);
-
         SDL_GL_SwapWindow(window.GetWindow().get());
 
     }

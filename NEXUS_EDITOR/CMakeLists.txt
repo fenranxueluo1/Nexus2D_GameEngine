@@ -1,12 +1,5 @@
-cmake_minimum_required(VERSION 4.3.0)
+cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_EDITOR VERSION 0.1.0 LANGUAGES C CXX)
-
-# ---------- 编译选项 ----------
-if (MSVC)
-    add_compile_options(/W4 /utf-8)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
 
 # ---------- 引入 NEXUS_WINDOW 子项目 ----------
 # NEXUS_WINDOW 会自动通过 add_subdirectory 引入 NEXUS_UTILITIES，
@@ -42,9 +35,15 @@ set(SDL_IMG_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image)
 set(SDL_MIX_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer)
 set(SDL_TTF_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf)
 
+# glm 的目录结构为 Dependencies/glm/glm.hpp，使用方以 <glm/glm.hpp> 方式包含，
+# 故 include 路径需指向 glm 目录的父目录（Dependencies/），
+# 这样 <glm/glm.hpp> 才能正确解析到 Dependencies/glm/glm.hpp。
+set(GLM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies)
+
 # 头文件路径：使用方以 <SDL3_image/SDL_image.h> 等方式包含
 target_include_directories(NEXUS_EDITOR
     PRIVATE
+        ${GLM_DIR}
         ${SDL_IMG_DIR}/include
         ${SDL_MIX_DIR}/include
         ${SDL_TTF_DIR}/include

@@ -1,12 +1,5 @@
-cmake_minimum_required(VERSION 4.3.0)
+cmake_minimum_required(VERSION 4.4.2)
 project(GLAD LANGUAGES C)
-
-# ---------- 编译选项 ----------
-if (MSVC)
-    add_compile_options(/W4 /utf-8)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
 
 # ---------- 源文件 ----------
 set(SOURCE_FILES
