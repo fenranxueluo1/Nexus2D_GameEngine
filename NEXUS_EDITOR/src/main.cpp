@@ -2,6 +2,48 @@
 #include <Windowing/Window/Window.h>
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
+#include <iostream>
+#include <SOIL/SOIL.h>
+
+bool LoadTexture(const std::string& filepath, int& width, int& height, bool blended)
+{
+    int channels = 0;
+
+    unsigned char* image = SOIL_load_image(filepath.c_str(), &width, &height, &channels, SOIL_LOAD_AUTO);
+    if (!image)
+    {
+        std::cout << "无法加载纹理 [" << filepath << "] -- " << SOIL_last_result();
+        return false;
+    }
+
+    GLint format = GL_RGBA;
+
+    switch (channels)
+    {
+        case 3: format = GL_RGB; break;
+        case 4: format = GL_RGBA; break;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    if (!blended)
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+    else
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, image);
+
+    SOIL_free_image_data(image);
+
+    return true;
+}
 
 int main() 
 {
@@ -60,14 +102,26 @@ int main()
         return -1;
     }
 
+    //临时加载纹理
+    GLuint texID;
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+
+    int width {0}, height {0};
+    if(!LoadTexture("assets/textures/tileset.png", width, height, false))
+    {
+        std::cout << "无法加载纹理!" << std::endl;
+        return -1;
+    }
+
     //创建顶点数据
     float vertices[] = {
-        -0.5f, 0.5f, 0.0f,
-        0.5f, 0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
+        -0.5f, 0.5f, 0.0f,  0.f, 1.f,
+        0.5f, 0.5f, 0.0f,   1.f, 1.f,
+        0.5f, -0.5f, 0.0f,  1.f, 0.f,
+        -0.5f, -0.5f, 0.0f, 0.f, 0.f
     };
-
+ 
     GLuint indices[] = 
     {
         0, 1, 2,
@@ -78,9 +132,12 @@ int main()
     const char* vertexSource = 
         "#version 460 core\n"
         "layout (location = 0) in vec3 aPosition;\n"
+        "layout (location = 1) in vec2 aTexCoords;\n"
+        "out vec2 fragUVs;\n"
         "void main()\n"
         "{\n"
         "   gl_Position = vec4(aPosition, 1.0);\n"
+        "   fragUVs = aTexCoords;\n"
         "}\0";
 
     //创建顶点着色器
@@ -103,10 +160,13 @@ int main()
     //创建片段着色器代码
     const char* fragmentSource = 
         "#version 460 core\n"
+        "in vec2 fragUVs;\n"
         "out vec4 color;\n"
+        "uniform sampler2D uTexture;\n"
         "void main()\n"
         "{\n"
-        "   color = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
+        //"   color = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
+        "   color = texture(uTexture, fragUVs);\n"
         "}\0";
 
     //创建片段着色器
@@ -166,8 +226,11 @@ int main()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*sizeof(GLuint), indices, GL_STATIC_DRAW);
 
     //设置顶点属性指针
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
 
@@ -206,7 +269,9 @@ int main()
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
 
-        //glDrawArrays(GL_TRIANGLES, 0, 6);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texID);
+
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         glBindVertexArray(0);

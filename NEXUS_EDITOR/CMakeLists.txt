@@ -19,6 +19,11 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_WINDOW
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../GLAD
                  ${CMAKE_CURRENT_BINARY_DIR}/GLAD)
 
+# ---------- 引入 SOIL 子项目 ----------
+# SOIL 是独立的静态库，其 include 目录以 PUBLIC 暴露（SOIL/）
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../SOIL
+                 ${CMAKE_CURRENT_BINARY_DIR}/SOIL)
+
 # ---------- 目标 ----------
 add_executable(NEXUS_EDITOR src/main.cpp)
 
@@ -51,6 +56,8 @@ target_link_libraries(NEXUS_EDITOR
         NEXUS_UTILITIES
         SDL3
         GLAD
+        SOIL
+        opengl32   # SOIL 直接引用 opengl32.dll 的导出符号（gl*/wgl*），需显式链接其导入库
 )
 
 # ---------- 拷贝 SDL3.dll 到输出目录 ----------
@@ -58,4 +65,12 @@ add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.dll
         $<TARGET_FILE_DIR:NEXUS_EDITOR>
+)
+
+# ---------- 拷贝 assets 资源到输出目录 ----------
+# 运行时按相对路径 assets/textures/... 加载，需保证 exe 同目录下有 assets/
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>/assets
 )
