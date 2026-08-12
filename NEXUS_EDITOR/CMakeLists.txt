@@ -19,11 +19,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_WINDOW
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../GLAD
                  ${CMAKE_CURRENT_BINARY_DIR}/GLAD)
 
-# ---------- 引入 SOIL 子项目 ----------
-# SOIL 是独立的静态库，其 include 目录以 PUBLIC 暴露（SOIL/）
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../SOIL
-                 ${CMAKE_CURRENT_BINARY_DIR}/SOIL)
-
 # ---------- 目标 ----------
 add_executable(NEXUS_EDITOR src/main.cpp)
 
@@ -39,12 +34,29 @@ target_compile_features(NEXUS_EDITOR
         cxx_std_20
 )
 
-# ---------- SDL3 库路径 ----------
-# NEXUS_WINDOW 只把 SDL 的 include 以 PUBLIC 传递过来，
-# 但 lib 目录是 PRIVATE 的，所以这里需要再指定一次链接目录。
+# ---------- SDL3 及扩展库（image / mixer / ttf）路径 ----------
+# 这些库都在 Dependencies 下，头文件在各自的 include/ 子目录，
+# 链接库（.lib）在各自的 lib/ 子目录。
+set(SDL_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL)
+set(SDL_IMG_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image)
+set(SDL_MIX_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer)
+set(SDL_TTF_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf)
+
+# 头文件路径：使用方以 <SDL3_image/SDL_image.h> 等方式包含
+target_include_directories(NEXUS_EDITOR
+    PRIVATE
+        ${SDL_IMG_DIR}/include
+        ${SDL_MIX_DIR}/include
+        ${SDL_TTF_DIR}/include
+)
+
+# 链接目录（.lib 所在）
 target_link_directories(NEXUS_EDITOR
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib
+        ${SDL_DIR}/lib
+        ${SDL_IMG_DIR}/lib
+        ${SDL_MIX_DIR}/lib
+        ${SDL_TTF_DIR}/lib
 )
 
 # ---------- 链接依赖 ----------
@@ -55,16 +67,48 @@ target_link_libraries(NEXUS_EDITOR
         NEXUS_WINDOW
         NEXUS_UTILITIES
         SDL3
+        SDL3_image
+        SDL3_mixer
+        SDL3_ttf
         GLAD
-        SOIL
-        opengl32   # SOIL 直接引用 opengl32.dll 的导出符号（gl*/wgl*），需显式链接其导入库
 )
 
-# ---------- 拷贝 SDL3.dll 到输出目录 ----------
+# ---------- 拷贝 SDL3 及扩展库 dll 到输出目录 ----------
+# SDL3_image / SDL3_mixer / SDL3_ttf 各自 lib/ 下都附带了运行时需要的 dll
+# （含它们内部依赖的格式解码 dll，如 libpng、libjpeg、libwebp、libogg 等）
 add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.dll
+        ${SDL_DIR}/lib/SDL3.dll
         $<TARGET_FILE_DIR:NEXUS_EDITOR>
+)
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SDL_IMG_DIR}/lib/SDL3_image.dll
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>
+)
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SDL_MIX_DIR}/lib/SDL3_mixer.dll
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>
+)
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SDL_TTF_DIR}/lib/SDL3_ttf.dll
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>
+)
+
+# SDL3_image / SDL3_mixer 的 lib/optional/ 下是可选格式解码库
+# （libpng/libwebp/libtiff/libogg/libopus 等）。核心 dll 已支持常见格式，
+# 但加载 webp/tiff/opus 等需这些 dll，统一拷贝以防运行时缺失。
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${SDL_IMG_DIR}/lib/optional
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
+)
+add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${SDL_MIX_DIR}/lib/optional
+        $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
 )
 
 # ---------- 拷贝 assets 资源到输出目录 ----------

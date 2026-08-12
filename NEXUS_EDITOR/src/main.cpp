@@ -1,28 +1,38 @@
 #define SDL_MAIN_HANDLED 1
 #include <Windowing/Window/Window.h>
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 #include <glad/glad.h>
 #include <iostream>
-#include <SOIL/SOIL.h>
+#include <vector>
+#include <cstring>
 
 bool LoadTexture(const std::string& filepath, int& width, int& height, bool blended)
 {
-    int channels = 0;
-
-    unsigned char* image = SOIL_load_image(filepath.c_str(), &width, &height, &channels, SOIL_LOAD_AUTO);
-    if (!image)
+    // 用 SDL3_image 解码图片为 SDL_Surface
+    SDL_Surface* surface = IMG_Load(filepath.c_str());
+    if (!surface)
     {
-        std::cout << "无法加载纹理 [" << filepath << "] -- " << SOIL_last_result();
+        std::cout << "无法加载纹理 [" << filepath << "] -- " << SDL_GetError() << std::endl;
         return false;
     }
 
-    GLint format = GL_RGBA;
-
-    switch (channels)
+    // 统一转换为当前平台的 "RGBA 逐字节数组" 格式。
+    // 注意：SDL 的 PACKEDORDER_RGBA 在小端机内存里实际是 A B G R，
+    // 与 OpenGL 的 GL_RGBA/UNSIGNED_BYTE（按内存字节序 R,G,B,A）相反。
+    // 因此不能用 SDL_PIXELFORMAT_RGBA8888，而要用 SDL_PIXELFORMAT_RGBA32——
+    // 它正是 SDL 为 "当前平台的 RGBA 字节数组" 定义的别名（见 SDL_pixels.h 注释），
+    // 与 GL_RGBA 上传语义一致，可避免红蓝颠倒。
+    SDL_Surface* converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
+    SDL_DestroySurface(surface);
+    if (!converted)
     {
-        case 3: format = GL_RGB; break;
-        case 4: format = GL_RGBA; break;
+        std::cout << "无法转换纹理格式 [" << filepath << "] -- " << SDL_GetError() << std::endl;
+        return false;
     }
+
+    width  = converted->w;
+    height = converted->h;
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -38,9 +48,28 @@ bool LoadTexture(const std::string& filepath, int& width, int& height, bool blen
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, image);
+    // SDL 像素行序为自上而下，而 OpenGL 默认期望自下而上，翻转 Y 以避免上下颠倒。
+    // flipped 是紧密排列的 RGBA 数组（无 pitch padding），故 UNPACK_ROW_LENGTH 设 0。
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    SOIL_free_image_data(image);
+    const int bytesPerPixel = 4;
+    const int rowBytes = width * bytesPerPixel;
+    std::vector<unsigned char> flipped(static_cast<size_t>(rowBytes) * height);
+    const unsigned char* src = static_cast<const unsigned char*>(converted->pixels);
+    unsigned char* dst = flipped.data();
+    for (int y = 0; y < height; ++y)
+    {
+        // 取第 (height-1-y) 行（SDL 自上而下）翻转到第 y 行（OpenGL 自下而上）
+        const unsigned char* srcRow = src + static_cast<size_t>(height - 1 - y) * converted->pitch;
+        std::memcpy(dst + static_cast<size_t>(y) * rowBytes, srcRow, rowBytes);
+    }
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped.data());
+
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+    SDL_DestroySurface(converted);
 
     return true;
 }
@@ -205,6 +234,11 @@ int main()
     //启用着色器程序
     glUseProgram(shaderProgram);
 
+    //将纹理绑定到纹理单元 0，并让 sampler 使用单元 0
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+
     //删除着色器，着色器程序链接成功后，着色器不再需要
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -218,8 +252,8 @@ int main()
     glBindVertexArray(VAO);
     //绑定顶点缓冲对象
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    //将顶点数据复制到缓冲对象
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices)*3*sizeof(float), vertices, GL_STATIC_DRAW);
+    //将顶点数据复制到缓冲对象（sizeof(vertices) 已是总字节数，不要再乘 stride）
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glGenBuffers(1, &IBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
