@@ -8,6 +8,7 @@
 #include <cstring>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <Rendering/Essentials/ShaderLoader.h>
 
 class Camera2D
 {
@@ -231,92 +232,15 @@ int main()
     // 在使用相机矩阵前先更新一次，否则 GetCameraMatrix() 返回的是初始单位矩阵
     camera.Update();
 
-    //创建顶点着色器代码
-    const char* vertexSource = 
-        "#version 460 core\n"
-        "layout (location = 0) in vec3 aPosition;\n"
-        "layout (location = 1) in vec2 aTexCoords;\n"
-        "out vec2 fragUVs;\n"
-        "uniform mat4 uProjection;\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = uProjection * vec4(aPosition, 1.0);\n"
-        "   fragUVs = aTexCoords;\n"
-        "}\0";
+    //创建第一个着色器
+    auto shader = SCION_RENDERING::ShaderLoader::Create("assets/shaders/basicShader.vert", "assets/shaders/basicShader.frag");
 
-    //创建顶点着色器
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    //添加顶点着色器代码
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    //编译顶点着色器
-    glCompileShader(vertexShader);
-    //获取编译状态
-    int status;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
-    if (!status)
+    if (!shader)
     {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "顶点着色器编译失败: " << infoLog << std::endl;
+        std::cout << "无法创建着色器!" << std::endl;
         return -1;
     }
-
-    //创建片段着色器代码
-    const char* fragmentSource = 
-        "#version 460 core\n"
-        "in vec2 fragUVs;\n"
-        "out vec4 color;\n"
-        "uniform sampler2D uTexture;\n"
-        "void main()\n"
-        "{\n"
-        //"   color = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
-        "   color = texture(uTexture, fragUVs);\n"
-        "}\0";
-
-    //创建片段着色器
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    //添加片段着色器代码
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    //编译片段着色器
-    glCompileShader(fragmentShader);
-    //获取编译状态
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
-    if (!status)
-    {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "片段着色器编译失败: " << infoLog << std::endl;
-        return -1;
-    }
-
-    //创建着色器程序
-    GLuint shaderProgram = glCreateProgram();
-    //附加着色器
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    //链接程序
-    glLinkProgram(shaderProgram);
-    //获取链接状态
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status);
-    if (!status)
-    {
-        char infoLog[512];
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "着色器程序链接失败: " << infoLog << std::endl;
-        return -1;
-    }
-
-    //启用着色器程序
-    glUseProgram(shaderProgram);
-
-    //将纹理绑定到纹理单元 0，并让 sampler 使用单元 0
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texID);
-    glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
-
-    //删除着色器，着色器程序链接成功后，着色器不再需要
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    
 
     //创建顶点数组和顶点缓冲对象
     GLuint VAO, VBO, IBO;
@@ -375,13 +299,15 @@ int main()
 
         glClearColor(1.f, 1.f, 1.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
-        glUseProgram(shaderProgram);
+        shader->Enable();
         glBindVertexArray(VAO);
 
         // 先更新相机，再取矩阵，确保本帧使用的是最新投影
         camera.Update();
+
         auto projection = camera.GetCameraMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uProjection"), 1, GL_FALSE, &projection[0][0]);
+
+        shader->SetUniformMat4("uProjection", projection);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texID);
@@ -390,6 +316,9 @@ int main()
 
         glBindVertexArray(0);
         SDL_GL_SwapWindow(window.GetWindow().get());
+
+        camera.Update();
+        shader->Disable();
 
     }
 
