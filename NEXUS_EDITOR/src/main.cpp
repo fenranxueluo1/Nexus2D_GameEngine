@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <Rendering/Essentials/ShaderLoader.h>
+#include <Logger/Logger.h>
 
 class Camera2D
 {
@@ -121,6 +122,8 @@ bool LoadTexture(const std::string& filepath, int& width, int& height, bool blen
 
 int main() 
 {
+    NEXUS_INIT_LOGS(true, true);
+
     bool running { true };
 
     // SDL3 已移除 SDL_INIT_EVERYTHING，需显式列出要初始化的子系统
@@ -188,12 +191,13 @@ int main()
     int width {0}, height {0};
     if(!LoadTexture("assets/textures/tileset.png", width, height, false))
     {
-        std::cout << "无法加载纹理!" << std::endl;
+        NEXUS_ERROR("无法加载纹理!");
         return -1;
     }
 
     UVs uvs{};
-
+    NEXUS_LOG("加载纹理：[宽度={0}, 高度={1}]", width, height);
+    NEXUS_WARN("加载纹理：[宽度={0}, 高度={1}]", width, height);
     auto generateUVs = [&](float startX, float startY, float spriteWidth, float spriteHeight)
     {
         // startX/startY/spriteWidth/spriteHeight 均为像素坐标，
@@ -233,7 +237,7 @@ int main()
     camera.Update();
 
     //创建第一个着色器
-    auto shader = SCION_RENDERING::ShaderLoader::Create("assets/shaders/basicShader.vert", "assets/shaders/basicShader.frag");
+    auto shader = NEXUS_RENDERING::ShaderLoader::Create("assets/shaders/basicShader.vert", "assets/shaders/basicShader.frag");
 
     if (!shader)
     {

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 
-namespace SCION_RENDERING {
+namespace NEXUS_RENDERING {
 
     GLuint ShaderLoader::CreateProgram(const std::string &vertexShader, const std::string &fragmentShader)
     {

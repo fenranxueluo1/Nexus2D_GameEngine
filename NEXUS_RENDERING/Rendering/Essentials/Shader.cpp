@@ -1,7 +1,7 @@
 #include "Shader.h"
 #include <iostream>
 
-namespace SCION_RENDERING {
+namespace NEXUS_RENDERING {
 
     GLuint Shader::GetUniformLocation(const std::string &uniformName)
     {

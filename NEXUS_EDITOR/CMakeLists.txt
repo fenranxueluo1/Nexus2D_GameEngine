@@ -9,15 +9,20 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_WINDOW
 
 # ---------- 引入 GLAD 子项目 ----------
 # GLAD 是独立的静态库，其 include 目录以 PUBLIC 暴露（glad/、KHR/）
-# 注意：必须在引入 SCION_RENDERING 之前先引入 GLAD，
+# 注意：必须在引入 NEXUS_RENDERING 之前先引入 GLAD，
 # 因为其 CMakeLists 会直接引用 GLAD 目标（同一目录不可被 add_subdirectory 两次）。
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../GLAD
                  ${CMAKE_CURRENT_BINARY_DIR}/GLAD)
 
-# ---------- 引入 SCION_RENDERING 子项目（静态库） ----------
+# ---------- 引入 NEXUS_RENDERING 子项目（静态库） ----------
 # 提供渲染相关功能（Shader / ShaderLoader），其 CMakeLists 已 PUBLIC 链接 GLAD 与 glm。
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../SCION_RENDERING
-                 ${CMAKE_CURRENT_BINARY_DIR}/SCION_RENDERING)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_RENDERING
+                 ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_RENDERING)
+
+# ---------- 引入 NEXUS_LOGGER 子项目（静态库） ----------
+# 提供日志功能（NEXUS_LOG / NEXUS_WARN / NEXUS_ERROR），其 CMakeLists 已 PUBLIC 暴露头文件路径。
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_LOGGER
+                 ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_LOGGER)
 
 # ---------- 目标 ----------
 add_executable(NEXUS_EDITOR src/main.cpp)
@@ -72,7 +77,8 @@ target_link_libraries(NEXUS_EDITOR
     PRIVATE
         NEXUS_WINDOW
         NEXUS_UTILITIES
-        SCION_RENDERING
+        NEXUS_RENDERING
+        NEXUS_LOGGER
         SDL3
         SDL3_image
         SDL3_mixer

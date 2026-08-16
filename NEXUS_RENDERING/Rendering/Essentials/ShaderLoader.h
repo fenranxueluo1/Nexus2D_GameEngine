@@ -1,7 +1,7 @@
 #include "Shader.h"
 #include <memory>
 
-namespace SCION_RENDERING {
+namespace NEXUS_RENDERING {
     class ShaderLoader
     {
     private:
