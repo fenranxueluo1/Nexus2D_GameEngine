@@ -1,5 +1,6 @@
 #include "Shader.h"
 #include <iostream>
+#include <Logger/Logger.h>
 
 namespace NEXUS_RENDERING {
 
@@ -13,7 +14,7 @@ namespace NEXUS_RENDERING {
 
         if (location == GL_INVALID_INDEX)
         {
-            std::cout << "Uniform [" << uniformName << "] not found in the shader!" << std::endl;
+            NEXUS_ERROR("Uniform [{}] not found in the shader!", uniformName);
             return -1;
         }
 

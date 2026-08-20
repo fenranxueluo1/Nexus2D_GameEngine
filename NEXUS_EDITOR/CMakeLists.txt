@@ -14,15 +14,17 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_WINDOW
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../GLAD
                  ${CMAKE_CURRENT_BINARY_DIR}/GLAD)
 
-# ---------- 引入 NEXUS_RENDERING 子项目（静态库） ----------
-# 提供渲染相关功能（Shader / ShaderLoader），其 CMakeLists 已 PUBLIC 链接 GLAD 与 glm。
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_RENDERING
-                 ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_RENDERING)
-
 # ---------- 引入 NEXUS_LOGGER 子项目（静态库） ----------
 # 提供日志功能（NEXUS_LOG / NEXUS_WARN / NEXUS_ERROR），其 CMakeLists 已 PUBLIC 暴露头文件路径。
+# 注意：必须在引入 NEXUS_RENDERING 之前先引入，因为 NEXUS_RENDERING 的 CMakeLists
+# 会直接引用 NEXUS_LOGGER 目标（同一目录不可被 add_subdirectory 两次）。
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_LOGGER
                  ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_LOGGER)
+
+# ---------- 引入 NEXUS_RENDERING 子项目（静态库） ----------
+# 提供渲染相关功能（Shader / ShaderLoader），其 CMakeLists 已 PUBLIC 链接 GLAD、glm 与 NEXUS_LOGGER。
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_RENDERING
+                 ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_RENDERING)
 
 # ---------- 目标 ----------
 add_executable(NEXUS_EDITOR src/main.cpp)

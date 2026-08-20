@@ -1,4 +1,5 @@
 #include "ShaderLoader.h"
+#include <Logger/Logger.h>
 #include <iostream>
 #include <fstream>
 
@@ -16,7 +17,7 @@ namespace NEXUS_RENDERING {
 
         if (!LinkShaders(program, vertex, fragment))
         {
-            std::cout << "无法链接着色器" << std::endl;
+            NEXUS_ERROR("无法链接着色器");
             return 0;
         }
         
@@ -31,7 +32,7 @@ namespace NEXUS_RENDERING {
 
         if (ifs.fail())
         {
-            std::cout << "着色器无法打开 [" << filepath <<"]" << std::endl;
+            NEXUS_ERROR("着色器无法打开 [{}]", filepath);
             return 0;
         }
 
@@ -52,7 +53,7 @@ namespace NEXUS_RENDERING {
 
         if (!CompileSuccess(shaderID))
         {
-            std::cout << "无法编译着色器[" << filepath <<"]" << std::endl;
+            NEXUS_ERROR("无法编译着色器[{}]", filepath);
         }
         
         
@@ -74,7 +75,7 @@ namespace NEXUS_RENDERING {
 
             glGetShaderInfoLog(shader, maxLength, &maxLength, errorLog.data());
 
-            std::cout << "无法编译着色器：" << std::string(errorLog) << std::endl;
+            NEXUS_ERROR("无法编译着色器：{}", errorLog);
 
             glDeleteShader(shader);
             return false;
@@ -98,7 +99,7 @@ namespace NEXUS_RENDERING {
 
             glGetProgramInfoLog(program, maxLength, &maxLength, errorLog.data());
 
-            std::cout << "着色器程序链接失败：" << std::string(errorLog) << std::endl;
+            NEXUS_ERROR("着色器程序链接失败：{}", errorLog);
             return false;
         }
         

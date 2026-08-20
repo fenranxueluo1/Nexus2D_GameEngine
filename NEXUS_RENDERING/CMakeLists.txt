@@ -11,6 +11,10 @@ target_sources(NEXUS_RENDERING
     PRIVATE
         Rendering/Essentials/Shader.cpp
         Rendering/Essentials/ShaderLoader.cpp
+        Rendering/Essentials/Texture.cpp
+        Rendering/Essentials/TextureLoader.cpp
+        Rendering/Essentials/Vertex.h
+        Rendering/Core/Camera2D.cpp
 )
 
 # ---------- 对外头文件 ----------
@@ -35,9 +39,16 @@ target_include_directories(NEXUS_RENDERING
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../GLAD/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/include
 )
 
 target_link_libraries(NEXUS_RENDERING
     PUBLIC
         GLAD
+    PRIVATE
+        NEXUS_LOGGER
+        SDL3
+        SDL3_image
 )
