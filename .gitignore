@@ -44,3 +44,6 @@ Makefile
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# ---------- 项目文件 ----------
+学习文档.md
