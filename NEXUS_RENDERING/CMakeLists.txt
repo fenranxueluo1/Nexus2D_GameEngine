@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 4.4.2)
-project(NEXUS_RENDERING
-    LANGUAGES C CXX
-)
+project(NEXUS_RENDERING)
 
 # ---------- 目标（静态链接库） ----------
 add_library(NEXUS_RENDERING STATIC)
@@ -27,10 +25,10 @@ target_include_directories(NEXUS_RENDERING
 )
 
 # ---------- C++ 标准 ----------
-target_compile_features(NEXUS_RENDERING
-    PUBLIC
-        cxx_std_20
-)
+# 设置 C++ 语言标准为 C++23
+set(CMAKE_CXX_STANDARD 23)
+# 强制要求 C++ 标准版本，若编译器不支持则报错
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- GLAD 与 glm 依赖 ----------
 # glad/ 头文件与 GL 函数实现（GLAD 是静态库）

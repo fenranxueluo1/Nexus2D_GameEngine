@@ -1,4 +1,5 @@
 #define SDL_MAIN_HANDLED 1
+#define NOMINMAX
 #include <Windowing/Window/Window.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -13,16 +14,40 @@
 #include <Rendering/Essentials/Vertex.h>
 #include <Rendering/Core/Camera2D.h>
 #include <Logger/Logger.h>
+#include <entt/entt.hpp>
+#include <Core/ECS/Entity.h>
+#include <Core/ECS/Components/TransformComponent.h>
+#include <Core/ECS/Components/SpriteComponent.h>
+#include <Core/ECS/Components/Identification.h>
 
 struct UVs
 {
-    float u, v, width, height;
-    UVs() : u{0.f}, v{0.f}, width{0.f}, height{0.f}
-    {
-
-    }
+    float u{0.f}, v{0.f}, uv_width{0.f}, uv_height{0.f};
 };
 
+struct TransformComponent
+{
+	glm::vec2 position{glm::vec2{0.f}}, scale{ glm::vec2{1.} };
+	float rotation{ 0.f };
+};
+
+struct SpriteComponent
+{
+	float width{ 0.f }, height{ 0.f };
+	UVs uvs{ .u = 0.f, .v = 0.f, .uv_width = 0.f, .uv_height = 0.f };
+
+	NEXUS_RENDERING::Color color{.r = 255, .g = 255, .b = 255, .a = 255};
+	int start_x{ 0 }, start_y{0};
+
+	void generate_uvs(int textureWidth, int textureHeight)
+	{
+		uvs.uv_width = width / textureWidth;
+		uvs.uv_height = height / textureHeight;
+
+		uvs.u = start_x * uvs.uv_width;
+		uvs.v = start_y * uvs.uv_height;
+	}
+};
 
 
 int main() 
@@ -97,55 +122,59 @@ int main()
         return -1;
     }
     
-
-    UVs uVs{};
     NEXUS_LOG("加载纹理：[宽度 = {0}, 高度 = {1}]", texture->GetWidth(),  texture->GetHeight());
     NEXUS_WARN("加载纹理：[宽度 = {0}, 高度 = {1}]", texture->GetWidth(), texture->GetHeight());
-    auto generateUVs = [&](float startX, float startY, float spriteWidth, float spriteHeight)
-    {
-        // startX/startY/spriteWidth/spriteHeight 均为像素坐标，
-        // 转成归一化 UV 时直接除以纹理总宽/总高。
-        uVs.width  = spriteWidth  / texture->GetWidth();
-        uVs.height = spriteHeight / texture->GetHeight();
 
-        uVs.u = startX / texture->GetWidth();
-        uVs.v = startY / texture->GetHeight();
-    };
+    auto pRegistry = std::make_unique<NEXUS_CORE::ECS::Registry>();
 
-    generateUVs(0, 0, 16, 16);
+	NEXUS_CORE::ECS::Entity entity1{*pRegistry, "Ent1", "Test"};
+	
+	auto& transform = entity1.AddComponent<NEXUS_CORE::ECS::TransformComponent>(NEXUS_CORE::ECS::TransformComponent{
+				.position = glm::vec2{10.f, 10.f},
+				.scale = glm::vec2{1.f, 1.f},
+				.rotation = 0.f
+		}
+	);
+
+	auto& sprite = entity1.AddComponent<NEXUS_CORE::ECS::SpriteComponent>(NEXUS_CORE::ECS::SpriteComponent{
+				.width = 16.f,
+				.height = 16.f,
+				.color = NEXUS_RENDERING::Color{.r = 255, .g = 0, .b = 255, .a = 255},
+				.start_x = 0,
+				.start_y = 1
+		}
+	);
+	
+	sprite.generate_uvs(texture->GetWidth(), texture->GetHeight());
 
     //创建顶点数据
-    // 位置(x,y,z) | 纹理坐标(u,v)
-    // 屏幕坐标 y 向下：y=10 在上，y=26 在下。
-    // 已取消像素 Y 翻转：纹理 V=0 对应原图顶部，V 自上而下递增。
-    // 故屏幕上方顶点取子图顶部 V（uvs.v），下方顶点取底部 V（uvs.v + uvs.height）。
-    // 四个顶点按顺时针排列：左上 -> 右上 -> 右下 -> 左下
-    //float vertices[] = {
-    //    10.f, 10.f, 0.0f,  uvs.u,              uvs.v,               // 屏幕左上 -> 子图左上
-    //    26.f, 10.f, 0.0f, (uvs.u + uvs.width), uvs.v,               // 屏幕右上 -> 子图右上
-    //    26.f, 26.f, 0.0f, (uvs.u + uvs.width),(uvs.v + uvs.height), // 屏幕右下 -> 子图右下
-    //    10.f, 26.f, 0.0f,  uvs.u,             (uvs.v + uvs.height)  // 屏幕左下 -> 子图左下
-    //};
-    
     std::vector<NEXUS_RENDERING::Vertex> vertices{};
     NEXUS_RENDERING::Vertex vTL{}, vTR{}, vBL{}, vBR{};
 
-    vTL.position = glm::vec2{10.f, 10.f};
-    vTL.uvs = glm::vec2{uVs.u, uVs.v};
+    //左上 TL
+    vTL.position = glm::vec2{ transform.position.x, transform.position.y + sprite.height};
+	vTL.uvs = glm::vec2{ sprite.uvs.u, sprite.uvs.v + sprite.uvs.uv_height};
 
-    vTR.position = glm::vec2{26.f, 10.f};
-    vTR.uvs = glm::vec2{(uVs.u + uVs.width), uVs.v};
+    //右上 TR
+	vTR.position = glm::vec2{ transform.position.x + sprite.width, transform.position.y + sprite.height};
+	vTR.uvs = glm::vec2{ sprite.uvs.u + sprite.uvs.uv_width, sprite.uvs.v + sprite.uvs.uv_height };
 
-    vBR.position = glm::vec2{26.f, 26.f};
-    vBR.uvs = glm::vec2{(uVs.u + uVs.width), (uVs.v + uVs.height)};
+    //左下 BL
+	vBL.position = glm::vec2{ transform.position.x, transform.position.y };
+	vBL.uvs = glm::vec2{ sprite.uvs.u, sprite.uvs.v};
 
-    vBL.position = glm::vec2{10.f, 26.f};
-    vBL.uvs = glm::vec2{uVs.u, (uVs.v + uVs.height)};
+    //右下 BR
+	vBR.position = glm::vec2{ transform.position.x + sprite.width, transform.position.y};
+	vBR.uvs = glm::vec2{ sprite.uvs.u + sprite.uvs.uv_width, sprite.uvs.v};
 
-    vertices.push_back(vTL);
-    vertices.push_back(vTR);
-    vertices.push_back(vBR);
-    vertices.push_back(vBL);
+	vertices.push_back(vTL);
+	vertices.push_back(vBL);
+	vertices.push_back(vBR);
+	vertices.push_back(vTR);
+
+    auto& id = entity1.GetComponent<NEXUS_CORE::ECS::Identification>();
+
+	NEXUS_LOG("名称: {}, 分类: {}, ID: {}", id.name, id.group, id.entity_id);
 
     GLuint indices[] = 
     {

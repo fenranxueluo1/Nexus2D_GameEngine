@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.4.2)
-project(NEXUS_EDITOR VERSION 0.1.0 LANGUAGES C CXX)
+project(NEXUS_EDITOR)
 
 # ---------- 引入 NEXUS_WINDOW 子项目 ----------
 # NEXUS_WINDOW 会自动通过 add_subdirectory 引入 NEXUS_UTILITIES，
@@ -26,6 +26,14 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_LOGGER
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_RENDERING
                  ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_RENDERING)
 
+# ---------- 引入 NEXUS_CORE 子项目（静态库） ----------
+# 提供 ECS 相关功能（Entity / Registry / Components），其 CMakeLists 已 PUBLIC 链接
+# NEXUS_RENDERING 并暴露 entt、glm 等头文件路径。
+# 注意：必须在引入 NEXUS_RENDERING 之后引入，因为其 CMakeLists 会直接引用
+# NEXUS_RENDERING 目标（同一目录不可被 add_subdirectory 两次）。
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_CORE
+                 ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_CORE)
+
 # ---------- 目标 ----------
 add_executable(NEXUS_EDITOR src/main.cpp)
 
@@ -36,10 +44,10 @@ target_include_directories(NEXUS_EDITOR
 )
 
 # ---------- C++ 标准 ----------
-target_compile_features(NEXUS_EDITOR
-    PRIVATE
-        cxx_std_20
-)
+# 设置 C++ 语言标准为 C++23
+set(CMAKE_CXX_STANDARD 23)
+# 强制要求 C++ 标准版本，若编译器不支持则报错
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- SDL3 及扩展库（image / mixer / ttf）路径 ----------
 # 这些库都在 Dependencies 下，头文件在各自的 include/ 子目录，
@@ -80,6 +88,7 @@ target_link_libraries(NEXUS_EDITOR
         NEXUS_WINDOW
         NEXUS_UTILITIES
         NEXUS_RENDERING
+        NEXUS_CORE
         NEXUS_LOGGER
         SDL3
         SDL3_image

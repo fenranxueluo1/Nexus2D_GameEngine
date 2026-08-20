@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 4.4.2)
-project(NEXUS_WINDOW
-    LANGUAGES C CXX
-)
+project(NEXUS_WINDOW)
 
 # ---------- 引入 NEXUS_UTILITIES 子项目 ----------
 # 这样可以通过 target_link_libraries(NEXUS_WINDOW PRIVATE NEXUS_UTILITIES)
@@ -28,10 +26,10 @@ target_include_directories(NEXUS_WINDOW
 )
 
 # ---------- C++ 标准 ----------
-target_compile_features(NEXUS_WINDOW
-    PUBLIC
-        cxx_std_20
-)
+# 设置 C++ 语言标准为 C++23
+set(CMAKE_CXX_STANDARD 23)
+# 强制要求 C++ 标准版本，若编译器不支持则报错
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- SDL3（现代方式） ----------
 # SDL 头文件对使用本库的代码也可见（PUBLIC），因为 Window.h 公开了 SDL 类型

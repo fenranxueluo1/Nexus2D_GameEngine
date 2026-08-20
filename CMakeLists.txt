@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 4.3.0)
-project(Nexus2D VERSION 0.1.0 LANGUAGES C CXX)
+cmake_minimum_required(VERSION 4.4.2)
+project(Nexus2D)
 
 # ---------- 全局输出目录 ----------
 # 把所有构建产物集中到 build/bin，方便运行和调试
@@ -13,9 +13,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # ---------- C++ 标准 ----------
-set(CMAKE_CXX_STANDARD 20)
+# 设置 C++ 语言标准为 C++23
+set(CMAKE_CXX_STANDARD 23)
+# 强制要求 C++ 标准版本，若编译器不支持则报错
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 # ---------- 编译选项 ----------
 if(MSVC)

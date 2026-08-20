@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 4.4.2)
-project(NEXUS_UTILITIES
-    LANGUAGES C CXX
-)
+project(NEXUS_UTILITIES)
 
 # ---------- 目标 ----------
 add_library(NEXUS_UTILITIES STATIC)
@@ -21,10 +19,10 @@ target_include_directories(NEXUS_UTILITIES
 )
 
 # ---------- C++ 标准 ----------
-target_compile_features(NEXUS_UTILITIES
-    PUBLIC
-        cxx_std_20
-)
+# 设置 C++ 语言标准为 C++23
+set(CMAKE_CXX_STANDARD 23)
+# 强制要求 C++ 标准版本，若编译器不支持则报错
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- SDL3（现代方式） ----------
 target_include_directories(NEXUS_UTILITIES
