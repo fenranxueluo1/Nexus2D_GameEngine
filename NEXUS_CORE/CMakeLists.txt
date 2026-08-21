@@ -9,6 +9,7 @@ target_sources(NEXUS_CORE
     PRIVATE
         Core/ECS/Entity.cpp
         Core/ECS/Registry.cpp
+        Core/Resources/AssetManager.cpp
 )
 
 # ---------- 对外头文件 ----------
@@ -38,7 +39,16 @@ target_include_directories(NEXUS_CORE
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies
 )
 
+# ---------- 链接依赖 ----------
+# NEXUS_RENDERING：SpriteComponent.h / AssetManager 依赖（PUBLIC，头文件路径级联传递）
+# NEXUS_LOGGER：AssetManager.cpp 使用 <Logger/Logger.h>（NEXUS_ERROR 等日志宏）
+# GLAD：允许在 NEXUS_CORE 源码中直接使用 <glad/gl.h> 及 GL 函数
+# NEXUS_LOGGER 与 GLAD 目前仅在 NEXUS_CORE 内部（.cpp）使用，故以 PRIVATE 链接；
+# 若未来 NEXUS_CORE 的公开头文件暴露 Logger 宏或 GL 类型，需将其改为 PUBLIC。
 target_link_libraries(NEXUS_CORE
     PUBLIC
         NEXUS_RENDERING
+    PRIVATE
+        NEXUS_LOGGER
+        GLAD
 )

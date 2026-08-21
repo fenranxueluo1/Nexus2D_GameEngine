@@ -19,6 +19,7 @@
 #include <Core/ECS/Components/TransformComponent.h>
 #include <Core/ECS/Components/SpriteComponent.h>
 #include <Core/ECS/Components/Identification.h>
+#include <Core/Resources/AssetManager.h>
 
 int main() 
 {
@@ -83,17 +84,25 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    //添加临时纹理
-    auto texture = NEXUS_RENDERING::TextureLoader::Create(NEXUS_RENDERING::Texture::TextureType::PIXEL, "./assets/textures/tileset.png");
+    auto assetManager = std::make_shared<NEXUS_RESOURCES::AssetManager>();
+	if (!assetManager)
+	{
+		NEXUS_ERROR("无法创建资产管理器!");
+		return -1;
+	}
 
-    if (!texture)
-    {
-        NEXUS_ERROR("纹理创建失败！")
-        return -1;
-    }
+	if (!assetManager->AddTexture("castle", "./assets/textures/tileset.png", true))
+	{
+		NEXUS_ERROR("无法创建并添加纹理");
+		return -1;
+	}
+
+
+    //添加临时纹理
+    auto texture = assetManager->GetTexture("castle");
     
-    NEXUS_LOG("加载纹理：[宽度 = {0}, 高度 = {1}]", texture->GetWidth(),  texture->GetHeight());
-    NEXUS_WARN("加载纹理：[宽度 = {0}, 高度 = {1}]", texture->GetWidth(), texture->GetHeight());
+    NEXUS_LOG("加载纹理：[宽度 = {0}, 高度 = {1}]", texture.GetWidth(),  texture.GetHeight());
+    NEXUS_WARN("加载纹理：[宽度 = {0}, 高度 = {1}]", texture.GetWidth(), texture.GetHeight());
 
     auto pRegistry = std::make_unique<NEXUS_CORE::ECS::Registry>();
 
@@ -115,7 +124,7 @@ int main()
 		}
 	);
 	
-	sprite.generate_uvs(texture->GetWidth(), texture->GetHeight());
+	sprite.generate_uvs(texture.GetWidth(), texture.GetHeight());
 
     //创建顶点数据
     std::vector<NEXUS_RENDERING::Vertex> vertices{};
@@ -239,7 +248,7 @@ int main()
         shader->SetUniformMat4("uProjection", projection);
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture->GetID());
+        glBindTexture(GL_TEXTURE_2D, texture.GetID());
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 

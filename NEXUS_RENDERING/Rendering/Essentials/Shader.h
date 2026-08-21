@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <glad/glad.h>
@@ -16,6 +17,7 @@ namespace NEXUS_RENDERING
         GLuint GetUniformLocation(const std::string& uniformName);
     
     public:
+        Shader() : m_ShaderProgramID{ 0 } {}
         Shader(GLuint program, const std::string vertexPath, const std::string& fragmentPath);
         ~Shader();
 
