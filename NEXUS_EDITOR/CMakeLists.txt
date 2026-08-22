@@ -35,7 +35,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../NEXUS_CORE
                  ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_CORE)
 
 # ---------- 目标 ----------
-add_executable(NEXUS_EDITOR src/main.cpp)
+add_executable(NEXUS_EDITOR "src/main.cpp"
+                            "src/Application.cpp")
 
 # ---------- 对外头文件 ----------
 target_include_directories(NEXUS_EDITOR
