@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_WINDOW)
 
+# ---------- C++ 标准 ----------
+# 注意：必须在 add_library 之前设置，CMake 只在目标创建时读取该变量，
+# 否则目标会退回到编译器默认标准（MSVC 为 C++14，无法使用 std::format / std::source_location）
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # ---------- 引入 NEXUS_UTILITIES 子项目 ----------
 # 这样可以通过 target_link_libraries(NEXUS_WINDOW PRIVATE NEXUS_UTILITIES)
 # 同时获得其头文件路径（PUBLIC 会传递过来）
@@ -24,12 +31,6 @@ target_include_directories(NEXUS_WINDOW
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
-
-# ---------- C++ 标准 ----------
-# 设置 C++ 语言标准为 C++23
-set(CMAKE_CXX_STANDARD 23)
-# 强制要求 C++ 标准版本，若编译器不支持则报错
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- SDL3（现代方式） ----------
 # SDL 头文件对使用本库的代码也可见（PUBLIC），因为 Window.h 公开了 SDL 类型

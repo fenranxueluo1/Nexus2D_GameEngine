@@ -19,6 +19,7 @@
 #include <Core/Systems/ScriptingSystem.h>
 #include <lua.hpp>
 #include <LuaBridge3/LuaBridge.h>
+#include <Core/Systems/RenderSystem.h>
 
 namespace NEXUS_EDITOR {
 
@@ -106,7 +107,7 @@ namespace NEXUS_EDITOR {
 	
 	auto& transform = entity1.AddComponent<NEXUS_CORE::ECS::TransformComponent>(NEXUS_CORE::ECS::TransformComponent{
 				.position = glm::vec2{10.f, 10.f},
-				.scale = glm::vec2{1.f, 1.f},
+				.scale = glm::vec2{3.f, 3.f},
 				.rotation = 0.f
 		}
 	);
@@ -114,48 +115,19 @@ namespace NEXUS_EDITOR {
 	auto& sprite = entity1.AddComponent<NEXUS_CORE::ECS::SpriteComponent>(NEXUS_CORE::ECS::SpriteComponent{
 				.width = 16.f,
 				.height = 16.f,
-				.color = NEXUS_RENDERING::Color{.r = 255, .g = 0, .b = 255, .a = 255},
+				.color = NEXUS_RENDERING::Color{.r = 255, .g = 255, .b = 255, .a = 255},
 				.start_x = 0,
-				.start_y = 1
+				.start_y = 1,
+				.layer = 0,
+				.texture_name = "castle"
 		}
 	);
 	
 	sprite.generate_uvs(texture.GetWidth(), texture.GetHeight());
 
-    //创建顶点数据
-    std::vector<NEXUS_RENDERING::Vertex> vertices{};
-    NEXUS_RENDERING::Vertex vTL{}, vTR{}, vBL{}, vBR{};
-
-    //左上 TL
-    vTL.position = glm::vec2{ transform.position.x, transform.position.y + sprite.height};
-	vTL.uvs = glm::vec2{ sprite.uvs.u, sprite.uvs.v + sprite.uvs.uv_height};
-
-    //右上 TR
-	vTR.position = glm::vec2{ transform.position.x + sprite.width, transform.position.y + sprite.height};
-	vTR.uvs = glm::vec2{ sprite.uvs.u + sprite.uvs.uv_width, sprite.uvs.v + sprite.uvs.uv_height };
-
-    //左下 BL
-	vBL.position = glm::vec2{ transform.position.x, transform.position.y };
-	vBL.uvs = glm::vec2{ sprite.uvs.u, sprite.uvs.v};
-
-    //右下 BR
-	vBR.position = glm::vec2{ transform.position.x + sprite.width, transform.position.y};
-	vBR.uvs = glm::vec2{ sprite.uvs.u + sprite.uvs.uv_width, sprite.uvs.v};
-
-	vertices.push_back(vTL);
-	vertices.push_back(vBL);
-	vertices.push_back(vBR);
-	vertices.push_back(vTR);
-
     auto& id = entity1.GetComponent<NEXUS_CORE::ECS::Identification>();
 
 	NEXUS_LOG("名称: {}, 分类: {}, ID: {}", id.name, id.group, id.entity_id);
-
-    GLuint indices[] = 
-    {
-        0, 1, 2,
-        2, 3, 0
-    };
 
 	//创建lua状态（LuaBridge3 基于原生 lua_State）
 	auto lua = std::shared_ptr<lua_State>(luaL_newstate(), [](lua_State* L) { if (L) lua_close(L); });
@@ -197,9 +169,21 @@ namespace NEXUS_EDITOR {
 		return false;
 	}
 
+	auto renderSystem = std::make_shared<NEXUS_CORE::Systems::RenderSystem>(*m_pRegistry);
+	if (!renderSystem)
+	{
+		NEXUS_ERROR("无法创建渲染系统!");
+		return false;
+	}
+
+	if (!m_pRegistry->AddToContext<std::shared_ptr<NEXUS_CORE::Systems::RenderSystem>>(renderSystem))
+	{
+		NEXUS_ERROR("无法将渲染系统添加到注册表上下文中!");
+		return false;
+	}
+
     //创建临时相机
     auto camera = std::make_shared<NEXUS_RENDERING::Camera2D>();
-    camera->SetScale(5.f);
 
 	if (!m_pRegistry->AddToContext<std::shared_ptr<NEXUS_RESOURCES::AssetManager>>(assetManager))
 	{
@@ -219,34 +203,6 @@ namespace NEXUS_EDITOR {
 		return false;
 	}
 	
-    
-    glGenVertexArrays(1, &VAO);
-
-    glGenBuffers(1, &VBO);
-
-    //绑定顶点数组对象
-    glBindVertexArray(VAO);
-    //绑定顶点缓冲对象
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    //将顶点数据复制到缓冲对象（sizeof(vertices) 已是总字节数，不要再乘 stride）
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(NEXUS_RENDERING::Vertex), vertices.data(), GL_STATIC_DRAW);
-
-    glGenBuffers(1, &IBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6*sizeof(GLuint), indices, GL_STATIC_DRAW);
-
-    //设置顶点属性指针
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(NEXUS_RENDERING::Vertex), (void*)offsetof(NEXUS_RENDERING::Vertex, position));
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(NEXUS_RENDERING::Vertex), (void*)offsetof(NEXUS_RENDERING::Vertex, uvs));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(NEXUS_RENDERING::Vertex), (void*)offsetof(NEXUS_RENDERING::Vertex, color));
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0);
-
     return true;
 }
 
@@ -304,22 +260,42 @@ bool Application::LoadShaders()
 
 		auto& scriptSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>();
 		scriptSystem->Update();
+
+		auto view = m_pRegistry->GetRegistry().view<NEXUS_CORE::ECS::TransformComponent, NEXUS_CORE::ECS::SpriteComponent>();
+
+		static float rotation{ 0.f };
+		static float x_pos{ 10.f };
+		static bool bMoveRight{ true };
+
+		if (rotation >= 360.f)
+			rotation = 0.f;
+
+		if (bMoveRight && x_pos < 300.f)
+			x_pos += 3;
+		else if (bMoveRight && x_pos >= 300.f)
+			bMoveRight = false;
+
+		if (!bMoveRight && x_pos > 10.f)
+			x_pos -= 3;
+		else if (!bMoveRight && x_pos <= 10.f)
+			bMoveRight = true;
+
+		for (const auto& entity : view)
+		{
+			NEXUS_CORE::ECS::Entity ent{*m_pRegistry, entity};
+			auto& transform = ent.GetComponent<NEXUS_CORE::ECS::TransformComponent>();
+
+			transform.rotation = rotation;
+			transform.position.x = x_pos;
+		}
+		
+		rotation += bMoveRight ? 9 : -9;
     }
 
     void Application::Render()
     {
-		auto& assetManager = m_pRegistry->GetContext<std::shared_ptr<NEXUS_RESOURCES::AssetManager>>();
-		auto& camera = m_pRegistry->GetContext<std::shared_ptr<NEXUS_RENDERING::Camera2D>>();
-
-		auto& shader = assetManager->GetShader("basic");
-		auto projection = camera->GetCameraMatrix();
-
-		if (shader.ShaderProgramID() == 0)
-		{
-			NEXUS_ERROR("着色器程序没有正确创建!");
-			return;
-		}
-
+		auto& renderSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::RenderSystem>>();
+		
 		glViewport(
 			0, 0,
 			m_pWindow->GetWidth(),
@@ -328,24 +304,13 @@ bool Application::LoadShaders()
 
 		glClearColor(1.f, 1.f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		shader.Enable();
-		glBindVertexArray(VAO);
-
-		shader.SetUniformMat4("uProjection", projection);
-
-		glActiveTexture(GL_TEXTURE0);
-		const auto& texture = assetManager->GetTexture("castle");
-		glBindTexture(GL_TEXTURE_2D, texture.GetID());
 
 		auto& scriptSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>();
 		scriptSystem->Render();
+		renderSystem->Update();
 
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-		glBindVertexArray(0);
 		SDL_GL_SwapWindow(m_pWindow->GetWindow().get());
 
-		shader.Disable();
     }
 
     void Application::CleanUp()
@@ -355,7 +320,6 @@ bool Application::LoadShaders()
 
     Application::Application()
         : m_pWindow{nullptr}, m_pRegistry{nullptr}, m_Event{}, m_bIsRunning{true}
-        , VAO{ 0 }, VBO{ 0 }, IBO{ 0 }
     {
 
     }

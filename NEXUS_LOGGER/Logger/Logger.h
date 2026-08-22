@@ -11,7 +11,7 @@
 * @param Takes an std::string_view or string in the form of "This is a log value: {0}, and {1}", followed by
 * the arguments
 */
-#define NEXUS_LOG(x, ...) NEXUS_LOGGER::Logger::GetInstance().Log(x __VA_OPT__(,) __VA_ARGS__);
+#define NEXUS_LOG(...) NEXUS_LOGGER::Logger::GetInstance().Log(__VA_ARGS__);
 
 /*
 * @brief Variadic Macro for logging warnings. This macro takes in a string message, followed by the
@@ -19,7 +19,7 @@
 * @param Takes an std::string_view or string in the form of "This is a log value: {0}, and {1}", followed by
 * the arguments
 */
-#define NEXUS_WARN(x, ...) NEXUS_LOGGER::Logger::GetInstance().Warn(x __VA_OPT__(,) __VA_ARGS__);
+#define NEXUS_WARN(...) NEXUS_LOGGER::Logger::GetInstance().Warn(__VA_ARGS__);
 
 /*
 * @brief Variadic Macro for logging Errors. This macro takes in a string message, followed by the
@@ -27,7 +27,7 @@
 * @param Takes an std::string_view or string in the form of "This is a log value: {0}, and {1}", followed by
 * the arguments
 */
-#define NEXUS_ERROR(x, ...) NEXUS_LOGGER::Logger::GetInstance().Error(std::source_location::current(), x __VA_OPT__(,) __VA_ARGS__);
+#define NEXUS_ERROR(...) NEXUS_LOGGER::Logger::GetInstance().Error(std::source_location::current(), __VA_ARGS__);
 #define NEXUS_INIT_LOGS(console, retain) NEXUS_LOGGER::Logger::GetInstance().Init(console, retain);
 
 namespace NEXUS_LOGGER {

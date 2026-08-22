@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_EDITOR)
 
+# ---------- C++ 标准 ----------
+# 注意：必须在 add_library 之前设置，CMake 只在目标创建时读取该变量，
+# 否则目标会退回到编译器默认标准（MSVC 为 C++14，无法使用 std::format / std::source_location）
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # ---------- 引入 NEXUS_WINDOW 子项目 ----------
 # NEXUS_WINDOW 会自动通过 add_subdirectory 引入 NEXUS_UTILITIES，
 # 同时以 PUBLIC 方式传递它们的头文件路径与 SDL3 头文件路径。
@@ -43,12 +50,6 @@ target_include_directories(NEXUS_EDITOR
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-
-# ---------- C++ 标准 ----------
-# 设置 C++ 语言标准为 C++23
-set(CMAKE_CXX_STANDARD 23)
-# 强制要求 C++ 标准版本，若编译器不支持则报错
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- SDL3 及扩展库（image / mixer / ttf）路径 ----------
 # 这些库都在 Dependencies 下，头文件在各自的 include/ 子目录，

@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 4.4.2)
 project(NEXUS_CORE)
 
+# ---------- C++ 标准 ----------
+# 注意：必须在 add_library 之前设置，CMake 只在目标创建时读取该变量，
+# 否则目标会退回到编译器默认标准（MSVC 为 C++14，无法使用 std::format / std::source_location）
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # ---------- 目标（静态链接库） ----------
 add_library(NEXUS_CORE STATIC)
 
@@ -11,6 +18,8 @@ target_sources(NEXUS_CORE
         Core/ECS/Registry.cpp
         Core/Resources/AssetManager.cpp
         Core/Systems/ScriptingSystem.cpp
+        Core/Systems/RenderSystem.cpp
+        
 )
 
 # ---------- 对外头文件 ----------
@@ -21,12 +30,6 @@ target_include_directories(NEXUS_CORE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
 )
-
-# ---------- C++ 标准 ----------
-# 设置 C++ 语言标准为 C++23
-set(CMAKE_CXX_STANDARD 23)
-# 强制要求 C++ 标准版本，若编译器不支持则报错
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------- 第三方依赖 ----------
 # Registry.h 使用 <entt.hpp>（位于 Dependencies/entt/）

@@ -15,7 +15,7 @@ namespace NEXUS_RENDERING {
         if (location == GL_INVALID_INDEX)
         {
             NEXUS_ERROR("Uniform [{}] not found in the shader!", uniformName);
-            return -1;
+            return static_cast<GLuint>(-1);
         }
 
         return location;
