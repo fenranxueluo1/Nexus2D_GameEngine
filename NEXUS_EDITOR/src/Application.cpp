@@ -16,6 +16,9 @@
 #include <Core/ECS/Components/Identification.h>
 #include <Core/ECS/Components/TransformComponent.h>
 #include <Core/Resources/AssetManager.h>
+#include <Core/Systems/ScriptingSystem.h>
+#include <lua.hpp>
+#include <LuaBridge3/LuaBridge.h>
 
 namespace NEXUS_EDITOR {
 
@@ -154,6 +157,46 @@ namespace NEXUS_EDITOR {
         2, 3, 0
     };
 
+	//创建lua状态（LuaBridge3 基于原生 lua_State）
+	auto lua = std::shared_ptr<lua_State>(luaL_newstate(), [](lua_State* L) { if (L) lua_close(L); });
+
+	if (!lua)
+	{
+		NEXUS_ERROR("无法创建lua状态!");
+		return false;
+	}
+
+	//打开 Lua 标准库（base、math、os、table、io、string 等）
+	luaL_openlibs(lua.get());
+
+	//启用异常，脚本运行出错时抛出 luabridge::LuaException
+	luabridge::enableExceptions(lua.get());
+
+	if (!m_pRegistry->AddToContext<std::shared_ptr<lua_State>>(lua))
+	{
+		NEXUS_ERROR("无法将lua状态添加到注册表上下文中!");
+		return false;
+	}
+		
+	auto scriptSystem = std::make_shared<NEXUS_CORE::Systems::ScriptingSystem>(*m_pRegistry);
+	if (!scriptSystem)
+	{
+		NEXUS_ERROR("无法创建脚本系统!");
+		return false;
+	}
+		
+	if (!scriptSystem->LoadMainScript(lua.get()))
+	{
+		NEXUS_ERROR("无法加载主lua脚本!");
+		return false;
+	}
+		
+	if (!m_pRegistry->AddToContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>(scriptSystem))
+	{
+		NEXUS_ERROR("无法将脚本系统添加到注册表上下文中!");
+		return false;
+	}
+
     //创建临时相机
     auto camera = std::make_shared<NEXUS_RENDERING::Camera2D>();
     camera->SetScale(5.f);
@@ -258,6 +301,9 @@ bool Application::LoadShaders()
 		}
 		
 		camera->Update();
+
+		auto& scriptSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>();
+		scriptSystem->Update();
     }
 
     void Application::Render()
@@ -291,6 +337,8 @@ bool Application::LoadShaders()
 		const auto& texture = assetManager->GetTexture("castle");
 		glBindTexture(GL_TEXTURE_2D, texture.GetID());
 
+		auto& scriptSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>();
+		scriptSystem->Render();
 
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
