@@ -21,9 +21,6 @@ Makefile
 *.obj
 *.idb
 *.exp
-*.lib
-*.dll
-*.exe
 *.tlog
 *.recipe
 *.lastbuildstate
