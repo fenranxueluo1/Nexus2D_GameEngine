@@ -16,9 +16,13 @@ target_sources(NEXUS_CORE
     PRIVATE
         Core/ECS/Entity.cpp
         Core/ECS/Registry.cpp
+        Core/ECS/MetaUtilities.cpp
         Core/Resources/AssetManager.cpp
         Core/Systems/ScriptingSystem.cpp
         Core/Systems/RenderSystem.cpp
+        Core/ECS/Components/TransformComponent.cpp
+        Core/ECS/Components/SpriteComponent.cpp
+        
         
 )
 

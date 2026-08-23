@@ -1,5 +1,7 @@
 #include "ScriptingSystem.h"
 #include "../ECS/Components/ScriptComponent.h"
+#include "../ECS/Components/TransformComponent.h"
+#include "../ECS/Components/SpriteComponent.h"
 #include "../ECS/Entity.h"
 #include <Logger/Logger.h>
 #include <lua.hpp>
@@ -112,5 +114,15 @@ namespace NEXUS_CORE::Systems {
 				NEXUS_ERROR("运行渲染脚本时出现错误: {}", err.what());
 			}
 		}
+	}
+
+	void ScriptingSystem::RegisterLuaBindings(lua_State* lua, NEXUS_CORE::ECS::Registry& registry)
+	{
+		NEXUS_CORE::ECS::Entity::CreateLuaEntityBind(lua, registry);
+		NEXUS_CORE::ECS::TransformComponent::CreateLuaTransformBind(lua);
+		NEXUS_CORE::ECS::SpriteComponent::CreateSpriteLuaBind(lua, registry);
+
+		NEXUS_CORE::ECS::Entity::RegisterMetaComponent<NEXUS_CORE::ECS::TransformComponent>();
+		NEXUS_CORE::ECS::Entity::RegisterMetaComponent<NEXUS_CORE::ECS::SpriteComponent>();
 	}
 }

@@ -1,5 +1,7 @@
 #pragma once
 #include "Entity.h"
+#include <lua.hpp>
+#include <LuaBridge3/LuaBridge.h>
 
 namespace NEXUS_CORE::ECS {
 	template <typename TComponent, typename ...Args>
@@ -38,5 +40,25 @@ namespace NEXUS_CORE::ECS {
 	{
 		auto& registry = m_Registry.GetRegistry();
 		return registry.remove<TComponent>(m_Entity);
+	}
+
+	template<typename TComponent>
+	luabridge::LuaRef add_component(Entity& entity, const luabridge::LuaRef& comp, LuaState state)
+	{
+		auto& component = entity.AddComponent<TComponent>(
+			comp.cast<TComponent>().valueOr(TComponent{})
+		);
+
+		return luabridge::LuaRef(state.state, &component);
+	}
+
+	template<typename TComponent>
+	inline void Entity::RegisterMetaComponent()
+	{
+		using namespace entt::literals;
+		using ComponentAdder = luabridge::LuaRef (*)(Entity&, const luabridge::LuaRef&, LuaState);
+		entt::meta_factory<TComponent>()
+			.type(entt::type_hash<TComponent>::value())
+			.func<static_cast<ComponentAdder>(&add_component<TComponent>)>("add_component"_hs);
 	}
 }

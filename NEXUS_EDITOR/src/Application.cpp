@@ -94,40 +94,12 @@ namespace NEXUS_EDITOR {
     	return false;
     }
 
-
-    //添加临时纹理
-    auto texture = assetManager->GetTexture("castle");
-    
-    NEXUS_LOG("加载纹理：[宽度 = {0}, 高度 = {1}]", texture.GetWidth(),  texture.GetHeight());
-    NEXUS_WARN("加载纹理：[宽度 = {0}, 高度 = {1}]", texture.GetWidth(), texture.GetHeight());
-
-    m_pRegistry = std::make_unique<NEXUS_CORE::ECS::Registry>();
-
-	NEXUS_CORE::ECS::Entity entity1{*m_pRegistry, "Ent1", "Test"};
-	
-	auto& transform = entity1.AddComponent<NEXUS_CORE::ECS::TransformComponent>(NEXUS_CORE::ECS::TransformComponent{
-				.position = glm::vec2{10.f, 10.f},
-				.scale = glm::vec2{3.f, 3.f},
-				.rotation = 0.f
-		}
-	);
-
-	auto& sprite = entity1.AddComponent<NEXUS_CORE::ECS::SpriteComponent>(NEXUS_CORE::ECS::SpriteComponent{
-				.width = 16.f,
-				.height = 16.f,
-				.color = NEXUS_RENDERING::Color{.r = 255, .g = 255, .b = 255, .a = 255},
-				.start_x = 0,
-				.start_y = 1,
-				.layer = 0,
-				.texture_name = "castle"
-		}
-	);
-	
-	sprite.generate_uvs(texture.GetWidth(), texture.GetHeight());
-
-    auto& id = entity1.GetComponent<NEXUS_CORE::ECS::Identification>();
-
-	NEXUS_LOG("名称: {}, 分类: {}, ID: {}", id.name, id.group, id.entity_id);
+	m_pRegistry = std::make_unique<NEXUS_CORE::ECS::Registry>();
+	if (!m_pRegistry)
+	{
+		NEXUS_ERROR("无法创建注册表!");
+		return false;
+	}
 
 	//创建lua状态（LuaBridge3 基于原生 lua_State）
 	auto lua = std::shared_ptr<lua_State>(luaL_newstate(), [](lua_State* L) { if (L) lua_close(L); });
@@ -154,12 +126,6 @@ namespace NEXUS_EDITOR {
 	if (!scriptSystem)
 	{
 		NEXUS_ERROR("无法创建脚本系统!");
-		return false;
-	}
-		
-	if (!scriptSystem->LoadMainScript(lua.get()))
-	{
-		NEXUS_ERROR("无法加载主lua脚本!");
 		return false;
 	}
 		
@@ -200,6 +166,14 @@ namespace NEXUS_EDITOR {
 	if (!LoadShaders())
 	{
 		NEXUS_ERROR("加载着色器失败！");
+		return false;
+	}
+
+	NEXUS_CORE::Systems::ScriptingSystem::RegisterLuaBindings(lua.get(), *m_pRegistry);
+		
+	if (!scriptSystem->LoadMainScript(lua.get()))
+	{
+		NEXUS_ERROR("无法加载主lua脚本!");
 		return false;
 	}
 	
@@ -261,35 +235,6 @@ bool Application::LoadShaders()
 		auto& scriptSystem = m_pRegistry->GetContext<std::shared_ptr<NEXUS_CORE::Systems::ScriptingSystem>>();
 		scriptSystem->Update();
 
-		auto view = m_pRegistry->GetRegistry().view<NEXUS_CORE::ECS::TransformComponent, NEXUS_CORE::ECS::SpriteComponent>();
-
-		static float rotation{ 0.f };
-		static float x_pos{ 10.f };
-		static bool bMoveRight{ true };
-
-		if (rotation >= 360.f)
-			rotation = 0.f;
-
-		if (bMoveRight && x_pos < 300.f)
-			x_pos += 3;
-		else if (bMoveRight && x_pos >= 300.f)
-			bMoveRight = false;
-
-		if (!bMoveRight && x_pos > 10.f)
-			x_pos -= 3;
-		else if (!bMoveRight && x_pos <= 10.f)
-			bMoveRight = true;
-
-		for (const auto& entity : view)
-		{
-			NEXUS_CORE::ECS::Entity ent{*m_pRegistry, entity};
-			auto& transform = ent.GetComponent<NEXUS_CORE::ECS::TransformComponent>();
-
-			transform.rotation = rotation;
-			transform.position.x = x_pos;
-		}
-		
-		rotation += bMoveRight ? 9 : -9;
     }
 
     void Application::Render()

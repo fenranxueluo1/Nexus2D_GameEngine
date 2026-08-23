@@ -17,6 +17,8 @@ namespace NEXUS_CORE::Systems {
 		bool LoadMainScript(lua_State* lua);
 		void Update();
 		void Render();
+
+		static void RegisterLuaBindings(lua_State* lua, NEXUS_CORE::ECS::Registry& registry);
 	};
 
 }

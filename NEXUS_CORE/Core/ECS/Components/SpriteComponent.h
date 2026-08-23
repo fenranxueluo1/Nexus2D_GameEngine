@@ -1,5 +1,8 @@
 #pragma once
 #include <Rendering/Essentials/Vertex.h>
+#include "../Registry.h"
+
+struct lua_State;
 
 namespace NEXUS_CORE::ECS {
 	struct UVs
@@ -25,5 +28,7 @@ namespace NEXUS_CORE::ECS {
 			uvs.u = start_x * uvs.uv_width;
 			uvs.v = start_y * uvs.uv_height;
 		}
+
+		static void CreateSpriteLuaBind(lua_State* lua, NEXUS_CORE::ECS::Registry& registry);
 	};
 }
