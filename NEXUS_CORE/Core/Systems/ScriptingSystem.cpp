@@ -3,6 +3,7 @@
 #include "../ECS/Components/TransformComponent.h"
 #include "../ECS/Components/SpriteComponent.h"
 #include "../ECS/Entity.h"
+#include "../Scripting/GlmLuaBindings.h"
 #include <Logger/Logger.h>
 #include <lua.hpp>
 #include <LuaBridge3/LuaBridge.h>
@@ -120,6 +121,8 @@ namespace NEXUS_CORE::Systems {
 
 	void ScriptingSystem::RegisterLuaBindings(lua_State* lua, NEXUS_CORE::ECS::Registry& registry)
 	{
+		NEXUS_CORE::Scripting::GLMBindings::CreateGLMBindings(lua);
+
 		Registry::CreateLuaRegistryBind(lua, registry);
 		Entity::CreateLuaEntityBind(lua, registry);
 		TransformComponent::CreateLuaTransformBind(lua);
