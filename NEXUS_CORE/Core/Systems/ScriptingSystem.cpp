@@ -7,6 +7,8 @@
 #include <lua.hpp>
 #include <LuaBridge3/LuaBridge.h>
 
+using namespace NEXUS_CORE::ECS;
+
 namespace NEXUS_CORE::Systems {
 
 	ScriptingSystem::ScriptingSystem(NEXUS_CORE::ECS::Registry& registry)
@@ -118,11 +120,15 @@ namespace NEXUS_CORE::Systems {
 
 	void ScriptingSystem::RegisterLuaBindings(lua_State* lua, NEXUS_CORE::ECS::Registry& registry)
 	{
-		NEXUS_CORE::ECS::Entity::CreateLuaEntityBind(lua, registry);
-		NEXUS_CORE::ECS::TransformComponent::CreateLuaTransformBind(lua);
-		NEXUS_CORE::ECS::SpriteComponent::CreateSpriteLuaBind(lua, registry);
+		Registry::CreateLuaRegistryBind(lua, registry);
+		Entity::CreateLuaEntityBind(lua, registry);
+		TransformComponent::CreateLuaTransformBind(lua);
+		SpriteComponent::CreateSpriteLuaBind(lua, registry);
 
-		NEXUS_CORE::ECS::Entity::RegisterMetaComponent<NEXUS_CORE::ECS::TransformComponent>();
-		NEXUS_CORE::ECS::Entity::RegisterMetaComponent<NEXUS_CORE::ECS::SpriteComponent>();
+		Entity::RegisterMetaComponent<TransformComponent>();
+		Entity::RegisterMetaComponent<SpriteComponent>();
+
+		Registry::RegisterMetaComponent<TransformComponent>();
+		Registry::RegisterMetaComponent<SpriteComponent>();
 	}
 }

@@ -79,11 +79,20 @@ namespace NEXUS_CORE::ECS {
 		
 
 		template <typename TComponent>
-		void RemoveComponent();
+		auto RemoveComponent();
 	};
 
 	template <typename TComponent>
-	luabridge::LuaRef add_component(Entity& entity, const luabridge::LuaRef& comp, LuaState state);
+	auto add_component(Entity& entity, const luabridge::LuaRef& comp, LuaState state);
+
+	template <typename TComponent>
+	bool has_component(Entity& entity);
+
+	template <typename TComponent>
+	auto get_component(Entity& entity, LuaState state);
+
+	template <typename TComponent>
+	auto remove_component(Entity& entity);
 }
 
 #include "Entity.inl"

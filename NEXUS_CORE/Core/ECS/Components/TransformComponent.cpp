@@ -15,7 +15,7 @@ void NEXUS_CORE::ECS::TransformComponent::CreateLuaTransformBind(lua_State* L)
 				.rotation = rotation
 			};
 		})
-		.addProperty("type_id", [](TransformComponent&) { return entt::type_hash<TransformComponent>::value(); })
+		.addStaticFunction("type_id", &entt::type_hash<TransformComponent>::value)
 		.addFunction("position", [](TransformComponent& transform) { return std::tuple<float, float>{ transform.position.x, transform.position.y }; })
 		.addFunction("scale", [](TransformComponent& transform) { return std::tuple<float, float>{ transform.scale.x, transform.scale.y }; })
 		.addPropertyReadWrite("rotation", &TransformComponent::rotation)

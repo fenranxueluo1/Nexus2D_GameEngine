@@ -23,7 +23,7 @@ void NEXUS_CORE::ECS::SpriteComponent::CreateSpriteLuaBind(lua_State* L, NEXUS_C
 				.texture_name = textureName
 			};
 		})
-		.addProperty("type_id", [](SpriteComponent&) { return entt::type_hash<SpriteComponent>::value(); })
+		.addStaticFunction("type_id", &entt::type_hash<SpriteComponent>::value)
 		.addPropertyReadWrite("texture_name", &SpriteComponent::texture_name)
 		.addPropertyReadWrite("width", &SpriteComponent::width)
 		.addPropertyReadWrite("height", &SpriteComponent::height)

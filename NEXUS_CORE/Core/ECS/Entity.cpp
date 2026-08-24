@@ -57,6 +57,40 @@ namespace NEXUS_CORE::ECS {
 
 				return luabridge::LuaRef(state);
 			})
+			.addFunction("has_component", [](Entity& entity, const luabridge::LuaRef& comp) -> bool {
+				const auto has_comp = InvokeMetaFunction(
+					GetIdType(comp),
+					"has_component"_hs,
+					entity
+				);
+
+				return has_comp ? has_comp.cast<bool>() : false;
+			})
+			.addFunction("get_component", [](Entity& entity, const luabridge::LuaRef& comp, lua_State* state) -> luabridge::LuaRef {
+				const auto component = InvokeMetaFunction(
+					GetIdType(comp),
+					"get_component"_hs,
+					entity, LuaState{ state }
+				);
+
+				if (auto* ref = component.try_cast<luabridge::LuaRef>())
+					return *ref;
+
+				return luabridge::LuaRef(state);
+			})
+			.addFunction("remove_component", [](Entity& entity, const luabridge::LuaRef& comp, lua_State* state) -> luabridge::LuaRef {
+				InvokeMetaFunction(
+					GetIdType(comp),
+					"remove_component"_hs,
+					entity
+				);
+
+				return luabridge::LuaRef(state);
+			})
+			.addFunction("name", &Entity::GetName)
+			.addFunction("group", &Entity::GetGroup)
+			.addFunction("kill", &Entity::Kill)
+			.addFunction("id", [](Entity& entity) { return static_cast<int32_t>(entity.GetEntity()); })
 			.endClass();
 	}
 }

@@ -36,14 +36,14 @@ namespace NEXUS_CORE::ECS {
 	}
 
 	template <typename TComponent>
-	void Entity::RemoveComponent()
+	auto Entity::RemoveComponent()
 	{
 		auto& registry = m_Registry.GetRegistry();
 		return registry.remove<TComponent>(m_Entity);
 	}
 
 	template<typename TComponent>
-	luabridge::LuaRef add_component(Entity& entity, const luabridge::LuaRef& comp, LuaState state)
+	auto add_component(Entity& entity, const luabridge::LuaRef& comp, LuaState state)
 	{
 		auto& component = entity.AddComponent<TComponent>(
 			comp.cast<TComponent>().valueOr(TComponent{})
@@ -53,12 +53,36 @@ namespace NEXUS_CORE::ECS {
 	}
 
 	template<typename TComponent>
+	bool has_component(Entity& entity)
+	{
+		return entity.HasComponent<TComponent>();
+	}
+
+	template<typename TComponent>
+	auto get_component(Entity& entity, LuaState state)
+	{
+		if (!entity.HasComponent<TComponent>())
+			return luabridge::LuaRef(state.state);
+
+		auto& comp = entity.GetComponent<TComponent>();
+		return luabridge::LuaRef(state.state, &comp);
+	}
+
+	template<typename TComponent>
+	auto remove_component(Entity& entity)
+	{
+		return entity.RemoveComponent<TComponent>();
+	}
+
+	template<typename TComponent>
 	inline void Entity::RegisterMetaComponent()
 	{
 		using namespace entt::literals;
-		using ComponentAdder = luabridge::LuaRef (*)(Entity&, const luabridge::LuaRef&, LuaState);
 		entt::meta_factory<TComponent>()
 			.type(entt::type_hash<TComponent>::value())
-			.func<static_cast<ComponentAdder>(&add_component<TComponent>)>("add_component"_hs);
+			.func<&add_component<TComponent>>("add_component"_hs)
+			.func<&has_component<TComponent>>("has_component"_hs)
+			.func<&get_component<TComponent>>("get_component"_hs)
+			.func<&remove_component<TComponent>>("remove_component"_hs);
 	}
 }
