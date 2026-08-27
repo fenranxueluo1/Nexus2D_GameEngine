@@ -2,6 +2,7 @@
 #include "../ECS/Components/ScriptComponent.h"
 #include "../ECS/Components/TransformComponent.h"
 #include "../ECS/Components/SpriteComponent.h"
+#include "../ECS/Components/AnimationComponent.h"
 #include "../ECS/Entity.h"
 #include "../Scripting/GlmLuaBindings.h"
 #include <Logger/Logger.h>
@@ -127,11 +128,14 @@ namespace NEXUS_CORE::Systems {
 		Entity::CreateLuaEntityBind(lua, registry);
 		TransformComponent::CreateLuaTransformBind(lua);
 		SpriteComponent::CreateSpriteLuaBind(lua, registry);
+		AnimationComponent::CreateAnimationLuaBind(lua);
 
 		Entity::RegisterMetaComponent<TransformComponent>();
 		Entity::RegisterMetaComponent<SpriteComponent>();
+		Entity::RegisterMetaComponent<AnimationComponent>();
 
 		Registry::RegisterMetaComponent<TransformComponent>();
 		Registry::RegisterMetaComponent<SpriteComponent>();
+		Registry::RegisterMetaComponent<AnimationComponent>();
 	}
 }
