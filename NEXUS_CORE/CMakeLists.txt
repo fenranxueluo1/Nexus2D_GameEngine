@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.4.2)
+cmake_minimum_required(VERSION 4.3)
 project(NEXUS_CORE)
 
 # ---------- C++ 标准 ----------
@@ -38,38 +38,98 @@ target_include_directories(NEXUS_CORE
         $<INSTALL_INTERFACE:include>
 )
 
-# ---------- 第三方依赖 ----------
-# Registry.h 使用 <entt.hpp>（位于 Dependencies/entt/）
-# TransformComponent.h 使用 <glm/glm.hpp>（include 路径指向 Dependencies/）
-# SpriteComponent.h 使用 <Rendering/Essentials/Vertex.h>（由 NEXUS_RENDERING 提供，
-#   其会级联传递 GLAD 与 glm 的头文件路径）
-# ScriptComponent.h 使用 <LuaBridge/LuaBridge.h> 与 <lua.hpp>（LuaBridge3 + Lua 5.5）
-# 上述均为公共头文件依赖，故以 PUBLIC 暴露，使用方链接 NEXUS_CORE 即可获得。
+# ---------- 与平台无关的第三方头文件依赖 ----------
+# Registry.h         使用 <entt.hpp>
+# TransformComponent.h 使用 <glm/glm.hpp>（include 路径指向 glm 的父目录 Dependencies/）
+# ScriptComponent.h  使用 <LuaBridge3/LuaBridge.h>
+# SpriteComponent.h  使用 <Rendering/Essentials/Vertex.h>（由 NEXUS_RENDERING 级联传递）
+# 这些均为纯头文件库，两平台都使用仓库内的版本，故以 PUBLIC 暴露。
 target_include_directories(NEXUS_CORE
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/entt
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/LuaBridge3
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/include
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
 )
 
 # ---------- 链接依赖 ----------
 # NEXUS_RENDERING：SpriteComponent.h / AssetManager 依赖（PUBLIC，头文件路径级联传递）
 # NEXUS_LOGGER：AssetManager.cpp 使用 <Logger/Logger.h>（NEXUS_ERROR 等日志宏）
 # GLAD：允许在 NEXUS_CORE 源码中直接使用 <glad/gl.h> 及 GL 函数
-# lua55：LuaBridge3 是绑定库，需链接 Lua 5.5 静态库（liblua55.a）。
-target_link_directories(NEXUS_CORE
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/lib
-)
-
 target_link_libraries(NEXUS_CORE
     PUBLIC
         NEXUS_RENDERING
-        lua55
     PRIVATE
         NEXUS_LOGGER
         GLAD
 )
+
+# ==============================================================================
+#  Lua（Windows / Linux 分别配置）
+#
+#  ScriptComponent.h 通过 <lua.hpp> 暴露 Lua 类型，故头文件路径需 PUBLIC。
+#  LuaBridge3 只是绑定层，真正提供实现的是 Lua 库本身，必须显式链接。
+#
+#  注意：Lua 官方不提供 CMake Config 包，Linux 下统一用 find_path / find_library
+#  定位系统安装的版本（Fedora 为 5.4，位于 /usr/include 与 /usr/lib64）。
+# ==============================================================================
+if(WIN32)
+    # Windows：使用仓库内随附的 Lua 5.5
+    target_include_directories(NEXUS_CORE
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/include
+    )
+    target_link_libraries(NEXUS_CORE
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/lib/lua55.lib
+    )
+else()
+    # Linux：查找系统安装的 Lua（find_path / find_library 的结果会写入 CACHE，
+    # 重复调用无副作用，也不存在导入目标的目录作用域问题）
+    find_path(NEXUS_CORE_LUA_INCLUDE_DIR
+        NAMES lua.hpp lua.h
+        PATH_SUFFIXES lua lua5.4 lua-5.4
+    )
+    find_library(NEXUS_CORE_LUA_LIBRARY
+        NAMES lua lua5.4 lua-5.4 lua54
+    )
+
+    if(NOT NEXUS_CORE_LUA_INCLUDE_DIR OR NOT NEXUS_CORE_LUA_LIBRARY)
+        message(FATAL_ERROR
+            "未找到 Lua，请安装其开发包（例如 Fedora: sudo dnf install lua-devel）")
+    endif()
+
+    target_include_directories(NEXUS_CORE
+        PUBLIC
+            ${NEXUS_CORE_LUA_INCLUDE_DIR}
+    )
+    target_link_libraries(NEXUS_CORE
+        PUBLIC
+            ${NEXUS_CORE_LUA_LIBRARY}
+    )
+endif()
+
+# ==============================================================================
+#  SDL3（Windows / Linux 分别配置）—— 仅为内部实现依赖，故为 PRIVATE
+#
+#  注意：导入目标只在调用 find_package 的目录及其子目录可见，
+#  本库与 NEXUS_WINDOW 是兄弟目录，因此必须各自独立查找。
+# ==============================================================================
+if(WIN32)
+    target_include_directories(NEXUS_CORE
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
+    )
+    target_link_libraries(NEXUS_CORE
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
+    )
+else()
+    find_package(SDL3 QUIET CONFIG)
+    if(TARGET SDL3::SDL3)
+        target_link_libraries(NEXUS_CORE PRIVATE SDL3::SDL3)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+        target_link_libraries(NEXUS_CORE PRIVATE PkgConfig::SDL3)
+    endif()
+endif()

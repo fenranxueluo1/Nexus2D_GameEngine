@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.4.2)
+cmake_minimum_required(VERSION 4.3)
 project(NEXUS_RENDERING)
 
 # ---------- C++ 标准 ----------
@@ -32,16 +32,14 @@ target_include_directories(NEXUS_RENDERING
         $<INSTALL_INTERFACE:include>
 )
 
-# ---------- GLAD 与 glm 依赖 ----------
-# glad/ 头文件与 GL 函数实现（GLAD 是静态库）
-# glm 以 <glm/glm.hpp> 方式包含，include 路径指向 Dependencies/
+# ---------- GLAD 与 glm ----------
+# 两者都是仓库内提供的、与平台无关的依赖：
+#   GLAD  —— glad/ 头文件与 GL 函数实现（静态库）
+#   glm   —— 纯头文件，以 <glm/glm.hpp> 方式包含，故 include 路径指向其父目录
 target_include_directories(NEXUS_RENDERING
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../GLAD/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/include
 )
 
 target_link_libraries(NEXUS_RENDERING
@@ -49,6 +47,43 @@ target_link_libraries(NEXUS_RENDERING
         GLAD
     PRIVATE
         NEXUS_LOGGER
-        SDL3
-        SDL3_image
 )
+
+# ==============================================================================
+#  SDL3 / SDL3_image（Windows / Linux 分别配置）—— 仅内部实现使用，故为 PRIVATE
+#
+#  注意：导入目标只在调用 find_package 的目录及其子目录可见，
+#  本库与 NEXUS_WINDOW 是兄弟目录，因此必须各自独立查找。
+# ==============================================================================
+if(WIN32)
+    # Windows：使用仓库内 Dependencies/ 下随附的预编译库
+    target_include_directories(NEXUS_RENDERING
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/include
+    )
+    target_link_libraries(NEXUS_RENDERING
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/lib/SDL3_image.lib
+    )
+else()
+    # Linux：优先 CMake Config 包，回退 pkg-config
+    find_package(SDL3 QUIET CONFIG)
+    if(TARGET SDL3::SDL3)
+        target_link_libraries(NEXUS_RENDERING PRIVATE SDL3::SDL3)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+        target_link_libraries(NEXUS_RENDERING PRIVATE PkgConfig::SDL3)
+    endif()
+
+    find_package(SDL3_image QUIET CONFIG)
+    if(TARGET SDL3_image::SDL3_image)
+        target_link_libraries(NEXUS_RENDERING PRIVATE SDL3_image::SDL3_image)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL3_image REQUIRED IMPORTED_TARGET sdl3-image)
+        target_link_libraries(NEXUS_RENDERING PRIVATE PkgConfig::SDL3_image)
+    endif()
+endif()

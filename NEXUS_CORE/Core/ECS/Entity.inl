@@ -78,11 +78,13 @@ namespace NEXUS_CORE::ECS {
 	inline void Entity::RegisterMetaComponent()
 	{
 		using namespace entt::literals;
+		// 注意：meta_factory<TComponent> 是依赖类型，按 C++ 标准调用其成员模板
+		// 必须写 .template func<...>()；MSVC 容忍省略，GCC/Clang 则要求显式写出。
 		entt::meta_factory<TComponent>()
 			.type(entt::type_hash<TComponent>::value())
-			.func<&add_component<TComponent>>("add_component"_hs)
-			.func<&has_component<TComponent>>("has_component"_hs)
-			.func<&get_component<TComponent>>("get_component"_hs)
-			.func<&remove_component<TComponent>>("remove_component"_hs);
+			.template func<&add_component<TComponent>>("add_component"_hs)
+			.template func<&has_component<TComponent>>("has_component"_hs)
+			.template func<&get_component<TComponent>>("get_component"_hs)
+			.template func<&remove_component<TComponent>>("remove_component"_hs);
 	}
 }

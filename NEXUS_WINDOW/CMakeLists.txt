@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.4.2)
+cmake_minimum_required(VERSION 4.3)
 project(NEXUS_WINDOW)
 
 # ---------- C++ 标准 ----------
@@ -32,23 +32,44 @@ target_include_directories(NEXUS_WINDOW
         $<INSTALL_INTERFACE:include>
 )
 
-# ---------- SDL3（现代方式） ----------
-# SDL 头文件对使用本库的代码也可见（PUBLIC），因为 Window.h 公开了 SDL 类型
-target_include_directories(NEXUS_WINDOW
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
-)
-
-target_link_directories(NEXUS_WINDOW
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib
-)
-
 # ---------- 链接依赖 ----------
 # NEXUS_UTILITIES 头文件通过 Window.h 间接公开 → 用 PUBLIC 传递其头文件路径
-# SDL3：Window.h 直接使用了 SDL 类型（SDL_GLContext / WindowPtr 等）→ 用 PUBLIC 传递
 target_link_libraries(NEXUS_WINDOW
     PUBLIC
         NEXUS_UTILITIES
-        SDL3
 )
+
+# ==============================================================================
+#  SDL3（Windows / Linux 分别配置）
+#
+#  SDL 头文件需以 PUBLIC 暴露，因为 Window.h 公开了 SDL 类型
+#  （SDL_GLContext / WindowPtr 等），使用方也要能看到。
+#
+#  注意：导入目标（SDL3::SDL3、PkgConfig::SDL3）只在调用 find_package 的目录
+#  及其子目录可见。NEXUS_WINDOW / NEXUS_RENDERING / NEXUS_CORE 是平级的兄弟目录，
+#  因此每个子项目都必须各自查找，不能依赖别处查找的结果。
+#  重复调用 find_package 与 pkg_check_modules 是安全的（内部有缓存）。
+# ==============================================================================
+if(WIN32)
+    # Windows：使用仓库内 Dependencies/ 下随附的预编译库
+    target_include_directories(NEXUS_WINDOW
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
+    )
+    target_link_libraries(NEXUS_WINDOW
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
+    )
+else()
+    # Linux：优先用 SDL3 官方提供的 CMake Config 包（能正确处理非标准安装前缀），
+    # 未安装 config 包时回退到 pkg-config
+    find_package(SDL3 QUIET CONFIG)
+
+    if(TARGET SDL3::SDL3)
+        target_link_libraries(NEXUS_WINDOW PUBLIC SDL3::SDL3)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+        target_link_libraries(NEXUS_WINDOW PUBLIC PkgConfig::SDL3)
+    endif()
+endif()

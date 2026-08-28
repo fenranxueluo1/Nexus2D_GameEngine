@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 4.4.2)
-project(Nexus2D)
+# 注意：不要使用高于本机 CMake 的版本号，否则无法配置。
+# 这里取 4.3：与各子项目保持一致，需本机 CMake ≥ 4.3.0。
+cmake_minimum_required(VERSION 4.3)
+project(Nexus2D LANGUAGES C CXX)
 
 # ---------- C++ 标准 ----------
 # 注意：必须在 add_library 之前设置，CMake 只在目标创建时读取该变量，
@@ -29,7 +31,9 @@ endif()
 # ---------- 引入顶层可执行项目 ----------
 # NEXUS_EDITOR 会自动级联引入：
 #   NEXUS_WINDOW  -> NEXUS_UTILITIES
+#   NEXUS_RENDERING
+#   NEXUS_CORE
+#   NEXUS_LOGGER
 #   GLAD
-# 并链接 SDL3（位于 Dependencies/SDL）
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/NEXUS_EDITOR
                  ${CMAKE_CURRENT_BINARY_DIR}/NEXUS_EDITOR)

@@ -283,6 +283,20 @@ bool Application::LoadShaders()
 
     void Application::CleanUp()
     {
+		// 必须按此顺序释放资源：
+		// 1) 先销毁注册表。它上下文中的 RenderSystem 持有 BatchRenderer，
+		//    其析构函数会调用 glDeleteVertexArrays / glDeleteBuffers，
+		//    这些 GL 调用要求上下文仍然有效。
+		// 2) 再销毁窗口，让 SDL 一并清理其 GL 上下文。
+		// 3) 最后才 SDL_Quit()。
+		//
+		// 若把注册表留到 Application 单例静态析构时才释放，则 SDL_Quit() 早已执行，
+		// GL 上下文与 GLAD 获取到的函数指针均已失效。
+		// Windows 下这通常是无害的空操作（opengl32.dll 仍在加载），
+		// 但 Linux 下会直接段错误。
+		m_pRegistry.reset();
+		m_pWindow.reset();
+
 		SDL_Quit();
     }
 

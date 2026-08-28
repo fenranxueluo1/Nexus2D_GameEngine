@@ -18,8 +18,18 @@ namespace NEXUS_LOGGER {
     {
         auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
+        // ctime_s 是 MSVC 专有扩展，Linux 下不可用。
+        // 改用标准的 localtime + strftime，并按原先 ctime_s 的输出格式
+        // "Www Mmm dd hh:mm:ss yyyy" 生成字符串，以保证 LogTime 的解析偏移不变。
+        std::tm localTime{};
+#if defined(_WIN32)
+        localtime_s(&localTime, &time);   // MSVC 参数顺序：(tm*, const time_t*)
+#else
+        localtime_r(&time, &localTime);   // POSIX 参数顺序：(const time_t*, tm*)
+#endif
+
         char buf[30];
-        ctime_s(buf, sizeof(buf), &time);
+        std::strftime(buf, sizeof(buf), "%a %b %d %H:%M:%S %Y", &localTime);
 
         LogTime logTime{ std::string{buf} };
         return std::format("{0}-{1}-{2} {3}", logTime.year, logTime.month, logTime.dayNumber, logTime.time);
