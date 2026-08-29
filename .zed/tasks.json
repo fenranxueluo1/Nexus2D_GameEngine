@@ -1,32 +1,42 @@
 [
   {
-    "label": "build NEXUS_EDITOR",
-    "command": "cmake --build build --target NEXUS_EDITOR -j",
+    "label": "CMake: Configure (Windows)",
+    "command": "cmake",
+    "args": ["--preset", "windows-debug"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always",
-    "hide": "never",
-    "allow_concurrent_runs": false,
-    "tags": ["build"]
+    "hide": "on_success"
   },
   {
-    "label": "run NEXUS_EDITOR",
-    "command": "build/bin/NEXUS_EDITOR",
+    "label": "CMake: Configure (Linux)",
+    "command": "cmake",
+    "args": ["--preset", "linux-debug"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always",
-    "hide": "never",
-    "allow_concurrent_runs": false,
-    "tags": ["run"]
+    "hide": "on_success"
   },
   {
-    "label": "build & run NEXUS_EDITOR",
-    "command": [
-      "cmake --build build --target NEXUS_EDITOR -j",
-      "build/bin/NEXUS_EDITOR"
-    ],
+    "label": "CMake: Build (Debug)",
+    "command": "cmake",
+    "args": ["--build", "build", "-j", "16"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always",
-    "hide": "never",
-    "allow_concurrent_runs": false,
-    "tags": ["build", "run"]
+    "hide": "on_success",
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "CMake: Build Then Run",
+    "command": "cmake --build build -j 16 && cd build/bin && NEXUS_EDITOR",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "allow_concurrent_runs": true
+  },
+  {
+    "label": "Run NEXUS_EDITOR",
+    "command": "NEXUS_EDITOR",
+    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": true,
+    "reveal": "always"
   }
 ]

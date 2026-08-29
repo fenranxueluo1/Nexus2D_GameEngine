@@ -82,9 +82,9 @@ endif()
 ```
 Nexus2D/
 ├── CMakeLists.txt              # 顶层 CMake，设置标准/输出目录并引入 NEXUS_EDITOR
+├── CMakePresets.json           # CMake 预设（windows-debug / linux-debug，跨编辑器通用）
 ├── LICENSE                     # GPL-3.0
-├── .clangd                     # clangd 配置（编译数据库指向 build/）
-├── .zed/                       # Zed 编辑器配置（settings.json / tasks.json）
+├── .zed/                       # Zed 编辑器配置（tasks.json 构建任务 / debug.json 调试）
 ├── Dependencies/
 │   ├── SDL/                    # SDL3 预编译库与头文件（Windows）
 │   ├── SDL3_image/             # SDL3 图像加载扩展（Windows）
@@ -197,6 +197,15 @@ sudo apt install libsdl3-dev libsdl3-image-dev libsdl3-mixer-dev libsdl3-ttf-dev
 
 ### 构建
 
+> **使用 CMake Presets（推荐）**：仓库根目录的 `CMakePresets.json` 定义了 `windows-debug` / `linux-debug` 两套预设（自动按平台过滤，并已开启 `compile_commands.json` 导出），VS Code / Zed / 命令行通用：
+>
+> ```bash
+> cmake --preset windows-debug   # 或 linux-debug
+> cmake --build build -j16
+> ```
+>
+> 与下方手动命令等价；首次配置后，后续只需 `cmake --build build`。
+
 #### Windows（Visual Studio + MSVC）
 
 ```powershell
@@ -243,32 +252,39 @@ cmake --build build -j$(nproc)
 
 | 文件 | 作用 |
 | --- | --- |
-| `.zed/settings.json` | clangd 语言服务器设置（强制使用系统 PATH 中的 clangd，避免与发行版 libstdc++ 头文件不匹配） |
-| `.zed/tasks.json` | 构建 / 运行 / 构建并运行 三个任务（`Ctrl+Shift+P` → `tasks: spawn` 选择） |
-| `.clangd` | 项目根 clangd 配置，以相对路径 `CompilationDatabase: build` 指向编译数据库，换机器 / 换平台无需改动 |
+| `CMakePresets.json` | 两套 CMake 预设（`windows-debug` / `linux-debug`），自动按平台过滤，构建 / 调试统一走 preset |
+| `.zed/tasks.json` | 构建 / 运行任务（`Ctrl+Shift+P` → `tasks: spawn` 选择） |
+| `.zed/debug.json` | 调试配置：Windows 用 CodeLLDB，Linux 用 GDB，调试前自动先构建 |
 
-### 前置要求
+### 任务列表（.zed/tasks.json）
+
+| 任务 | 说明 |
+| --- | --- |
+| `CMake: Configure (Windows)` | 首次在 Windows 配置 `build/`（等价 `cmake --preset windows-debug`） |
+| `CMake: Configure (Linux)` | 首次在 Linux 配置 `build/`（等价 `cmake --preset linux-debug`） |
+| `CMake: Build (Debug)` | 增量构建全部目标（等价 `cmake --build build -j16`） |
+| `CMake: Build Then Run` | 先构建，成功后运行 `build/bin/NEXUS_EDITOR` |
+| `Run NEXUS_EDITOR` | 直接运行已构建的程序（Windows 自动补 `.exe`） |
+
+### 调试（.zed/debug.json）
+
+按 `F9` 打断点后按 `F4` 选择配置启动；配置带 `build` 字段，启动前会自动先构建：
+
+- **Debug NEXUS_EDITOR (Windows / CodeLLDB)**：首次使用 Zed 会自动下载 CodeLLDB
+- **Debug NEXUS_EDITOR (Linux / GDB)**：需系统安装 `gdb`
+
+### 前置要求（Linux）
 
 ```bash
 # Debian / Ubuntu
-sudo apt install clangd
+sudo apt install clangd gdb
 ```
 
 ### 首次配置
 
-clangd 依赖 `build/compile_commands.json`，首次需按上文 Linux 构建命令带 `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` 配置，或直接执行：
-
-```bash
-rm -rf build
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-cmake --build build --target NEXUS_EDITOR -j$(nproc)
-```
-
-之后用 Zed 打开**项目根目录**（保证 `.clangd` 与 `build/` 在项目根下），等待 clangd 完成索引（首次约几十秒），即可获得代码补全 / 定义跳转 / 诊断。按 `Ctrl+Shift+P` → `tasks: spawn` 选择 **build & run NEXUS_EDITOR** 即可一键构建运行。
+clangd 依赖 `build/compile_commands.json`（两个预设均已开启 `CMAKE_EXPORT_COMPILE_COMMANDS=ON`）。首次在 Zed 中执行 `task: spawn` → **CMake: Configure (Linux)**（Windows 选对应任务），之后用 Zed 打开**项目根目录**（保证 `build/` 在项目根下），等待 clangd 完成索引（首次约几十秒），即可获得代码补全 / 定义跳转 / 诊断。之后 `task: spawn` → **CMake: Build Then Run** 即可一键构建运行。
 
 > **注意**：若 configure 曾因缺少依赖失败，CMake 会把 `*_LIBRARY` / `*_INCLUDE_DIR` 的 `NOTFOUND` 结果写入缓存，重试前应 `rm -rf build` 重新配置，否则 find 命令会直接复用缓存的失败结果。
->
-> 调试：可在 `.zed/debug.json` 增加 CodeLLDB 配置（`program: $ZED_WORKTREE_ROOT/build/bin/NEXUS_EDITOR`）。
 
 ## 核心模块说明
 
