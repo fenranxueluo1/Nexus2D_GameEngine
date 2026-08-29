@@ -9,17 +9,14 @@ void NEXUS_UTIL::SDL_Destroyer::operator()(SDL_Window *window) const
 
 void NEXUS_UTIL::SDL_Destroyer::operator()(SDL_Gamepad *controller) const
 {
-    
+    SDL_CloseGamepad(controller);
+    controller = nullptr;
+    std::cout << "Closed SDL Game Controller!\n";
 }
 
 void NEXUS_UTIL::SDL_Destroyer::operator()(SDL_Cursor *cursor) const
 {
    
-}
-
-Controller make_shared_controller(SDL_Gamepad *controller)
-{
-    return Controller();
 }
 
 Cursor make_shared_cursor(SDL_Cursor *cursor)

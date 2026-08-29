@@ -1,16 +1,19 @@
 -- Main Lua Script!
+-- 先把纹理登记进 AssetManager，之后 Sprite 才能生成 UV 并被渲染
+AssetManager.add_texture("red_player", "assets/textures/red_player.png", true)
+AssetManager.add_texture("castle", "assets/textures/castle.png", true)
 
 gEntity = Entity("TestEntity", "Groupy")
 gEntity2 = Entity("BigTesty", "Groupy")
 local transform = gEntity:add_component(
-	Transform(vec2(100, 100), vec2(10, 10), 0)
+	Transform(vec2(100, 100), vec2(4, 4), 0)
 )
 
-gEntity2:add_component(Transform(200, 100, 10, 10, 0))
-local sprite2 = gEntity2:add_component(Sprite("player", 32, 32, 0, 2, 0))
+gEntity2:add_component(Transform(200, 100, 4, 4, 0))
+local sprite2 = gEntity2:add_component(Sprite("red_player", 32.0, 32.0, 0, 2, 0))
 sprite2:generate_uvs()
 
-gEntity2:add_component(Animation(4, 2, 0, flase))
+gEntity2:add_component(Animation(6, 5, 0, false))
 
 local sprite = gEntity:add_component(
 	Sprite("castle", 16.0, 16.0, 0, 1, 0)
@@ -25,13 +28,17 @@ local value = 0
 
 local view = Registry.get_entities(Transform)
 
-view:exclude(transform)
+view:exclude(Transform)
 
 view:for_each(
 	function (entity)
 		print(entity:name())
 	end
 )
+
+function UpdateEntity()
+
+end
 
 main = {
 	[1] = {
@@ -54,9 +61,10 @@ main = {
 				move_right = true 
 			end 
 
+			
 			transform.position.x = x_pos
 			transform.rotation = rotation 
-
+			
 			if move_right then 
 				rotation = rotation + 9
 			else
@@ -79,9 +87,40 @@ main = {
 
 			transform.scale = vec2(scale, scale)
 
-			--local sprite2 = gEntity:get_component(Sprite)
-			--print("Texture Name: " ..sprite2.texture_name)
+			--[[
+			if Keyboard.pressed(KEY_W) then 
+				print("Key W was just pressed")
+			elseif Keyboard.pressed(KEY_S) then 
+				print("Key S was just pressed")
+			elseif Keyboard.pressed(KEY_A) then 
+				print("Key A was just pressed")
+			elseif Keyboard.pressed(KEY_D) then 
+				print("Key D was just pressed")
+			end
 
+			if Mouse.just_pressed(LEFT_BTN) then
+				print("Mouse Left Button Pressed")
+			elseif Mouse.just_pressed(MIDDLE_BTN) then
+				print("Mouse MIDDLE Button Pressed") 
+			elseif Mouse.just_pressed(RIGHT_BTN) then
+				print("Mouse RIGHT Button Pressed") 
+			end
+
+			local rstick_LR = Gamepad.get_axis_position(1, 2)
+			print("RSTICK LR value: " ..rstick_LR)
+			local rstick_UD = Gamepad.get_axis_position(1, 3)
+			print("RSTICK UD value: " ..rstick_UD)
+
+			local lstick_LR = Gamepad.get_axis_position(1, 0)
+			print("LSTICK LR value: " ..lstick_LR)
+			local lstick_UD = Gamepad.get_axis_position(1, 1)
+			print("LSTICK UD value: " ..lstick_UD)
+
+			local lTrigger = Gamepad.get_axis_position(1, 4)
+			print("LTrigger value: " ..lTrigger)
+			local rTrigger = Gamepad.get_axis_position(1, 5)
+			print("RTrigger value: " ..rTrigger)
+			--]]
 		end
 	},
 	[2] = {

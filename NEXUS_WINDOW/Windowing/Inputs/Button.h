@@ -1,0 +1,10 @@
+#pragma once
+
+namespace NEXUS_WINDOWING::Inputs {
+	struct Button
+	{
+		bool bIsPressed{ false }, bJustPressed{ false }, bJustReleased{ false };
+		void Update(bool bPressed);
+		void Reset();
+	};
+}

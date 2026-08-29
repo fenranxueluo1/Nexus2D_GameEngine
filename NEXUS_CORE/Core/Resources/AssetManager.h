@@ -6,6 +6,10 @@
 #include <Rendering/Essentials/Shader.h>
 #include <Rendering/Essentials/Texture.h>
 
+#include "../ECS/Registry.h"
+
+struct lua_State;
+
 namespace NEXUS_RESOURCES {
 
 	class AssetManager
@@ -51,5 +55,7 @@ namespace NEXUS_RESOURCES {
 		* @return Returns the desired shader if it exists, else returns an empty Shader object
 		*/
 		NEXUS_RENDERING::Shader& GetShader(const std::string& shaderName);
+
+		static void CreateLuaAssetManager(lua_State* lua, NEXUS_CORE::ECS::Registry& registry);
 	};
 }

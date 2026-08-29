@@ -28,6 +28,8 @@
 * the arguments
 */
 #define NEXUS_ERROR(...) NEXUS_LOGGER::Logger::GetInstance().Error(std::source_location::current(), __VA_ARGS__);
+
+#define NEXUS_ASSERT(x) assert(x);
 #define NEXUS_INIT_LOGS(console, retain) NEXUS_LOGGER::Logger::GetInstance().Init(console, retain);
 
 namespace NEXUS_LOGGER {

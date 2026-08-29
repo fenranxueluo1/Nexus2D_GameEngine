@@ -199,8 +199,32 @@ endif()
 
 # ---------- 拷贝 assets 资源到输出目录 ----------
 # 运行时按相对路径 assets/textures/... 加载，需保证 exe 同目录下有 assets/
-add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+#
+# 注意：不能用 add_custom_command(TARGET ... POST_BUILD)。
+# POST_BUILD 只在可执行文件重新链接时才触发，若只改动了 .lua / .png 等资源文件
+# 而未改动 C++ 源码，则不会有任何目标被重建，资源也就不会同步，
+# 运行时加载的仍是旧脚本（表现为"改了脚本却毫无反应"）。
+#
+# 这里改为用 stamp 文件建立文件级依赖：任一资源文件比 stamp 新就重新拷贝。
+# CONFIGURE_DEPENDS 让新增/删除资源文件时能自动重新运行 CMake，
+# 从而使 GLOB 结果保持最新。
+file(GLOB_RECURSE NEXUS_ASSET_FILES
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/*
+)
+
+set(NEXUS_ASSETS_STAMP ${CMAKE_CURRENT_BINARY_DIR}/assets_copy.stamp)
+
+add_custom_command(
+    OUTPUT ${NEXUS_ASSETS_STAMP}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/assets
         $<TARGET_FILE_DIR:NEXUS_EDITOR>/assets
+    COMMAND ${CMAKE_COMMAND} -E touch ${NEXUS_ASSETS_STAMP}
+    DEPENDS ${NEXUS_ASSET_FILES}
+    COMMENT "同步 assets 到输出目录"
+    VERBATIM
 )
+
+add_custom_target(NEXUS_EDITOR_Assets ALL DEPENDS ${NEXUS_ASSETS_STAMP})
+add_dependencies(NEXUS_EDITOR NEXUS_EDITOR_Assets)

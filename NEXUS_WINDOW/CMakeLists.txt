@@ -21,6 +21,10 @@ add_library(NEXUS_WINDOW STATIC)
 target_sources(NEXUS_WINDOW
     PRIVATE
         Windowing/Window/Window.cpp
+        Windowing/Inputs/Button.cpp
+        Windowing/Inputs/Keyboard.cpp
+        Windowing/Inputs/Mouse.cpp
+        Windowing/Inputs/Gamepad.cpp
 )
 
 # ---------- 对外头文件 ----------
@@ -34,9 +38,15 @@ target_include_directories(NEXUS_WINDOW
 
 # ---------- 链接依赖 ----------
 # NEXUS_UTILITIES 头文件通过 Window.h 间接公开 → 用 PUBLIC 传递其头文件路径
+# NEXUS_LOGGER：Keyboard.cpp / Mouse.cpp / Gamepad.cpp 使用 NEXUS_ERROR 等日志宏
+#   （Logger.h 位于 NEXUS_LOGGER/Logger/），
+#   该目标在 NEXUS_EDITOR 中于本目录之后才 add_subdirectory，
+#   CMake 允许前向引用（配置结束时解析），故此处可直接链接。
 target_link_libraries(NEXUS_WINDOW
     PUBLIC
         NEXUS_UTILITIES
+    PRIVATE
+        NEXUS_LOGGER
 )
 
 # ==============================================================================

@@ -5,6 +5,8 @@
 #include "../ECS/Components/AnimationComponent.h"
 #include "../ECS/Entity.h"
 #include "../Scripting/GlmLuaBindings.h"
+#include "../Scripting/InputManager.h"
+#include "../Resources/AssetManager.h"
 #include <Logger/Logger.h>
 #include <lua.hpp>
 #include <LuaBridge3/LuaBridge.h>
@@ -123,6 +125,9 @@ namespace NEXUS_CORE::Systems {
 	void ScriptingSystem::RegisterLuaBindings(lua_State* lua, NEXUS_CORE::ECS::Registry& registry)
 	{
 		NEXUS_CORE::Scripting::GLMBindings::CreateGLMBindings(lua);
+		NEXUS_CORE::InputManager::CreateLuaInputBindings(lua);
+
+		NEXUS_RESOURCES::AssetManager::CreateLuaAssetManager(lua, registry);
 
 		Registry::CreateLuaRegistryBind(lua, registry);
 		Entity::CreateLuaEntityBind(lua, registry);
@@ -137,5 +142,26 @@ namespace NEXUS_CORE::Systems {
 		Registry::RegisterMetaComponent<TransformComponent>();
 		Registry::RegisterMetaComponent<SpriteComponent>();
 		Registry::RegisterMetaComponent<AnimationComponent>();
+	}
+
+	void ScriptingSystem::RegisterLuaFunctions(lua_State* lua)
+	{
+		luabridge::getGlobalNamespace(lua)
+			.addFunction(
+				"run_script", [](lua_State* state)
+				{
+					// 首个参数即脚本路径
+					const char* path = luaL_checkstring(state, 1);
+
+					if (luaL_dofile(state, path) != LUA_OK)
+					{
+						NEXUS_ERROR("Error loading Lua Script: {}", lua_tostring(state, -1));
+						lua_pop(state, 1);
+						return false;
+					}
+
+					return true;
+				}
+			);
 	}
 }

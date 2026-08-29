@@ -13,7 +13,10 @@ namespace NEXUS_UTIL {
 }
 
 typedef std::shared_ptr<SDL_Gamepad> Controller;
-static Controller make_shared_controller(SDL_Gamepad* controller);
+inline Controller make_shared_controller(SDL_Gamepad* controller)
+{
+    return Controller(controller, NEXUS_UTIL::SDL_Destroyer{});
+}
 
 typedef std::shared_ptr<SDL_Cursor> Cursor;
 static Cursor make_shared_cursor(SDL_Cursor* cursor);

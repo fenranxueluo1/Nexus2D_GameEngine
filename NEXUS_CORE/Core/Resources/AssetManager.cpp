@@ -2,6 +2,8 @@
 #include <Rendering/Essentials/TextureLoader.h>
 #include <Rendering/Essentials/ShaderLoader.h>
 #include <Logger/Logger.h>
+#include <lua.hpp>
+#include <LuaBridge3/LuaBridge.h>
 
 namespace NEXUS_RESOURCES {
 
@@ -75,5 +77,26 @@ namespace NEXUS_RESOURCES {
         }
 
         return *shaderItr->second;
+    }
+
+     void AssetManager::CreateLuaAssetManager(lua_State* lua, NEXUS_CORE::ECS::Registry& registry)
+    {
+        auto& asset_manager = registry.GetContext<std::shared_ptr<AssetManager>>();
+        if (!asset_manager)
+        {
+            NEXUS_ERROR("Failed to bind the asset manager to lua - Does not exist in the registry!");
+            return;
+        }
+
+        luabridge::getGlobalNamespace(lua)
+            .beginClass<AssetManager>("AssetManager")
+            .addStaticFunction(
+                "add_texture",
+                [&asset_manager](const std::string& assetName, const std::string& filepath, bool pixel_art)
+                {
+                    return asset_manager->AddTexture(assetName, filepath, pixel_art);
+                }
+            )
+            .endClass();
     }
 }
