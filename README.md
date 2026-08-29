@@ -15,6 +15,7 @@
 - **资产管理**：`AssetManager` 统一管理纹理与着色器，按名称索引
 - **日志系统**：提供 `NEXUS_LOG` / `NEXUS_WARN` / `NEXUS_ERROR` 宏，基于 C++20 `<format>`，错误日志自动携带源位置（`source_location`），控制台输出按级别着色（Windows 用 Win32 控制台属性，Linux 用 ANSI 转义序列）
 - **SDL3 现代化封装**：基于 `std::unique_ptr` 与自定义删除器管理 SDL 资源（`SDL_Window`、`SDL_Gamepad`、`SDL_Cursor`），杜绝手动释放遗漏
+- **输入系统**：键盘 / 鼠标 / 游戏手柄统一管理（`NEXUS_WINDOW/Windowing/Inputs/`），按钮状态机区分 `pressed` / `just_pressed` / `just_released`，手柄支持热插拔，并提供完整 Lua 绑定（`Keyboard` / `Mouse` / `Gamepad` 类）
 
 ## 技术栈
 
@@ -103,7 +104,8 @@ Nexus2D/
 ├── NEXUS_WINDOW/               # 窗口库（静态库）
 │   ├── Windowing/
 │   │   ├── Window/             # Window.h / Window.cpp（SDL3 窗口 + GL 上下文）
-│   │   └── Iputs/              # 输入系统（预留目录）
+│   │   └── Inputs/             # 输入系统：Keyboard / Mouse / Gamepad / Button
+│   │                           #   （Keys.h / GPButtons.h / MouseButtons.h 为键位与按钮枚举）
 │   └── CMakeLists.txt
 ├── NEXUS_LOGGER/               # 日志库（静态库，跨平台控制台着色）
 │   ├── Logger/
@@ -114,16 +116,16 @@ Nexus2D/
 ├── NEXUS_RENDERING/            # 渲染库（静态库）
 │   ├── Rendering/
 │   │   ├── Essentials/         # Shader / ShaderLoader / Texture / TextureLoader / Vertex
-│   │   ├── Core/               # Camera2D（2D 正交相机）、BatchRenderer（批渲染）
-│   │   └── Buffers/            # GPU 缓冲（预留目录）
+│   │   └── Core/               # Camera2D（2D 正交相机）、BatchRenderer（批渲染）
 │   └── CMakeLists.txt
 ├── NEXUS_CORE/                 # 核心库（静态库，ECS + 脚本）
 │   ├── Core/ECS/
 │   │   ├── Entity.{h,cpp,inl}  # 实体封装（含 Lua 元注册）
 │   │   ├── Registry.{h,cpp,inl}# 实体注册表与上下文
+│   │   ├── MetaUtilities.{h,cpp}  # entt 反射辅助（meta 类型/函数查询与调用）
 │   │   └── Components/         # Transform / Sprite / Identification / Animation / Script
 │   ├── Core/Resources/         # AssetManager（纹理与着色器管理）
-│   ├── Core/Scripting/         # GlmLuaBindings（glm 类型的 Lua 绑定）
+│   ├── Core/Scripting/         # GlmLuaBindings、InputManager（glm 绑定 + 输入管理器）
 │   ├── Core/Systems/           # RenderSystem / ScriptingSystem / AnimationSystem
 │   └── CMakeLists.txt
 └── NEXUS_EDITOR/               # 可执行项目（编辑器入口）
@@ -133,7 +135,7 @@ Nexus2D/
     ├── assets/                 # 运行时资源（构建时自动拷贝到可执行文件同目录）
     │   ├── scripts/main.lua    # Lua 主脚本
     │   ├── shaders/            # basicShader.vert / basicShader.frag
-    │   └── textures/           # castle.png / player.png
+    │   └── textures/           # castle.png / red_player.png
     └── CMakeLists.txt
 ```
 
@@ -144,6 +146,7 @@ NEXUS_EDITOR 作为顶层可执行项目，会自动级联引入所有依赖：
 ```
 NEXUS_EDITOR (executable)
    ├── NEXUS_WINDOW  (static lib)
+   │     ├── NEXUS_LOGGER (PRIVATE)
    │     └── NEXUS_UTILITIES ─────────┐
    ├── NEXUS_RENDERING (static lib)   │
    │     ├── GLAD                     │
@@ -151,6 +154,7 @@ NEXUS_EDITOR (executable)
    │     └── glm                      │
    ├── NEXUS_CORE  (static lib)       │
    │     ├── NEXUS_RENDERING (见上)   │
+   │     ├── NEXUS_WINDOW (见上)      │
    │     └── Lua + LuaBridge3         │
    ├── NEXUS_LOGGER  (static lib)     │
    ├── GLAD  (static lib)             │
@@ -222,7 +226,7 @@ cmake --build build -j$(nproc)
 ./build/bin/NEXUS_EDITOR.exe
 ```
 
-启动后会创建一个 640×480 的窗口，加载 `assets/scripts/main.lua` 创建实体并挂载变换/精灵/动画组件，随后进入事件循环渲染。按 `ESC` 或关闭窗口即可退出。
+启动后会创建一个 640×480 的窗口，加载 `assets/scripts/main.lua` 创建两个实体（`TestEntity` / `BigTesty`）并挂载变换/精灵/动画组件，脚本驱动其平移、旋转与呼吸缩放；同时接入输入系统（键盘 / 鼠标 / 手柄，支持热插拔）。按 `ESC` 或关闭窗口即可退出。
 
 ## 核心模块说明
 
@@ -253,6 +257,14 @@ NEXUS_WINDOWING::Window window(
 - `SetGLContext()` —— 绑定 OpenGL 上下文
 - `GetWidth()` / `GetHeight()` / `GetXPos()` / `GetYPos()` —— 窗口几何信息
 - `SetWindowName()` —— 动态修改窗口标题
+
+输入系统位于 `Windowing/Inputs/`，与 `Window` 解耦，由事件分发驱动：
+
+- `Button` —— 按钮状态机基类，区分 `pressed`（持续按住）/ `just_pressed`（刚按下）/ `just_released`（刚松开）
+- `Keyboard` —— 键盘状态：`IsKeyPressed()` / `IsKeyJustPressed()` / `IsKeyJustReleased()`
+- `Mouse` —— 鼠标按键与指针状态：`GetMouseScreenPosition()` 获取屏幕坐标，`GetMouseWheelX/Y()` 读取滚轮
+- `Gamepad` —— 手柄：按钮、摇杆轴（`AXIS_X1` … `AXIS_Z2`）与方向键（hat），支持热插拔（`SDL_EVENT_GAMEPAD_ADDED` / `SDL_EVENT_GAMEPAD_REMOVED`）
+- `Keys.h` / `GPButtons.h` / `MouseButtons.h` —— 键位 / 手柄按钮 / 鼠标按键枚举定义
 
 ### NEXUS_LOGGER
 
@@ -307,6 +319,10 @@ NEXUS_LOG("名称: {}, 分类: {}, ID: {}", id.name, id.group, id.entity_id);
 - `ScriptingSystem` —— 加载并执行 Lua 脚本，注册 C++ → Lua 绑定
 - `AnimationSystem` —— 推进 `AnimationComponent` 的帧索引
 
+`InputManager`（`Core/Scripting/InputManager.h`）为输入设备的单例管理器：持有 `Keyboard` / `Mouse` 与多手柄映射（最多 4 个），`UpdateKeyboard()` / `UpdateMouse()` / `UpdateGamepads()` 推进状态，并响应 SDL 输入事件（按键、鼠标、手柄按钮/轴/hat）。`CreateLuaInputBindings()` 将 `Keyboard` / `Mouse` / `Gamepad` 类与 `KEY_*`、`*_BTN`、`AXIS_*` 常量暴露给 Lua。
+
+`MetaUtilities`（`Core/ECS/MetaUtilities.h`）基于 entt 反射系统，提供 `GetIdType()`（从 Lua 值解析组件类型 id）与 `InvokeMetaFunction()`（按类型 id / 函数 id 调用 meta 函数），支撑脚本层的组件动态操作。
+
 `AssetManager` 统一管理纹理与着色器，按名称索引并供实体引用：
 
 ```cpp
@@ -322,10 +338,14 @@ assetManager->AddShader("basic", "assets/shaders/basicShader.vert",
 
 ```lua
 -- assets/scripts/main.lua
+-- 纹理需先登记进 AssetManager，之后 Sprite 才能生成 UV 并被渲染
+AssetManager.add_texture("red_player", "assets/textures/red_player.png", true)
+AssetManager.add_texture("castle", "assets/textures/castle.png", true)
+
 gEntity = Entity("TestEntity", "Groupy")
 
 local transform = gEntity:add_component(
-    Transform(vec2(100, 100), vec2(10, 10), 0)
+    Transform(vec2(100, 100), vec2(4, 4), 0)
 )
 
 local sprite = gEntity:add_component(
@@ -333,7 +353,7 @@ local sprite = gEntity:add_component(
 )
 sprite:generate_uvs()
 
--- 查询具备 Transform 的实体并遍历
+-- 查询具备 Transform 的实体并遍历（也可用 view:exclude(...) 排除组件）
 local view = Registry.get_entities(Transform)
 view:for_each(function (entity)
     print(entity:name())
@@ -345,6 +365,26 @@ main = {
 }
 ```
 
+输入绑定可直接在 Lua 中查询（由 `InputManager::CreateLuaInputBindings` 注册）：
+
+```lua
+-- 键盘：KEY_A ... KEY_Z、KEY_0 ... KEY_9、KEY_SPACE、KEY_ESC、KEY_LCTRL、KEY_F1 ...
+if Keyboard.just_pressed(KEY_W) then
+    -- 刚按下 W
+elseif Keyboard.pressed(KEY_A) then
+    -- 持续按住 A
+end
+
+-- 鼠标：LEFT_BTN / MIDDLE_BTN / RIGHT_BTN
+if Mouse.just_pressed(LEFT_BTN) then
+    print("x =", Mouse.screen_position().x, "y =", Mouse.screen_position().y)
+end
+
+-- 手柄（索引从 1 开始）：GP_BTN_A、DPAD_UP、AXIS_X1 ... AXIS_Z2
+if Gamepad.just_pressed(1, GP_BTN_A) then end
+local lstick = Gamepad.get_axis_position(1, AXIS_X1)
+```
+
 脚本需定义全局 `main` 表：`main[1].update` 在每帧更新时调用，`main[2].render` 在每帧渲染时调用，两者缺失均会导致加载失败。
 
 脚本路径为相对当前工作目录的 `./assets/scripts/main.lua`，因此请在 `build/bin/` 下运行程序。
@@ -354,7 +394,7 @@ main = {
 创建窗口、初始化渲染并驱动一个 ECS 精灵的完整流程见 `NEXUS_EDITOR/src/Application.cpp`，核心步骤：
 
 1. `NEXUS_INIT_LOGS` 初始化日志系统
-2. `SDL_Init` 初始化 VIDEO 与 EVENTS 子系统
+2. `SDL_Init` 初始化 VIDEO、EVENTS、GAMEPAD 与 JOYSTICK 子系统
 3. `SDL_GL_SetAttribute` 配置 OpenGL 4.6 Core、缓冲区位深、双缓冲等
 4. 构造 `NEXUS_WINDOWING::Window` 创建窗口
 5. `SDL_GL_CreateContext` 创建并 `window.SetGLContext()` 绑定 GL 上下文
@@ -362,7 +402,7 @@ main = {
 7. 创建 `AssetManager`，加载纹理与着色器
 8. 创建 `NEXUS_CORE::ECS::Registry`，并注册 `RenderSystem` / `ScriptingSystem` / `AnimationSystem`
 9. 创建 `lua_State` 与 `Camera2D`，一并存入 `Registry` 上下文供各系统共享
-10. `ScriptingSystem::LoadMainScript` 加载 `main.lua`，进入事件循环渲染
+10. `ScriptingSystem::LoadMainScript` 加载 `main.lua`；每帧在事件循环中将 SDL 键盘 / 鼠标 / 手柄事件（`SDL_EVENT_KEY_DOWN`、`SDL_EVENT_MOUSE_BUTTON_DOWN`、`SDL_EVENT_GAMEPAD_*` 等）交给 `InputManager` 分发后进入更新与渲染
 
 > **资源释放顺序**：`Application::CleanUp()` 中必须先销毁 `Registry`（其 `RenderSystem` 持有 `BatchRenderer`，析构时会调用 `glDelete*`），再销毁窗口，最后 `SDL_Quit()`。若把 `Registry` 留到静态析构阶段释放，GL 上下文与 GLAD 函数指针已失效，Linux 下会直接段错误。
 
@@ -376,8 +416,8 @@ main = {
 - [x] 资源管理（纹理、着色器）
 - [x] 帧动画系统
 - [x] Windows / Linux 双平台构建
-- [ ] 输入系统（`NEXUS_WINDOW/Windowing/Iputs/`，目前为预留目录）
-- [ ] GPU 缓冲封装（`NEXUS_RENDERING/Rendering/Buffers/`）
+- [x] 输入系统（键盘 / 鼠标 / 手柄，含 Lua 绑定与热插拔）
+- [ ] GPU 缓冲独立封装（VBO / IBO 等抽象）
 - [ ] 场景图与层级变换
 - [ ] 音频与字体资源管理（SDL3_mixer / SDL3_ttf 已接入构建，尚未封装）
 - [ ] 编辑器 UI（ImGui 集成）
