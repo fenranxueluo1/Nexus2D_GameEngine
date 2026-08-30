@@ -81,9 +81,15 @@ if(WIN32)
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/include
     )
+    # MinGW 与 MSVC 使用不同的库文件名（.a vs .lib）
+    if(MINGW)
+        set(NEXUS_LUA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/lib/lua55.a)
+    else()
+        set(NEXUS_LUA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/lib/lua55.lib)
+    endif()
     target_link_libraries(NEXUS_CORE
         PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/Lua_5.5/lib/lua55.lib
+            ${NEXUS_LUA_LIB}
     )
 else()
     # Linux：查找系统安装的 Lua（find_path / find_library 的结果会写入 CACHE，
@@ -122,9 +128,15 @@ if(WIN32)
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
     )
+    # MinGW 与 MSVC 使用不同的导入库文件名（.dll.a vs .lib）
+    if(MINGW)
+        set(NEXUS_SDL3_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/libSDL3.dll.a)
+    else()
+        set(NEXUS_SDL3_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib)
+    endif()
     target_link_libraries(NEXUS_CORE
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
+            ${NEXUS_SDL3_LIB}
     )
 else()
     find_package(SDL3 QUIET CONFIG)

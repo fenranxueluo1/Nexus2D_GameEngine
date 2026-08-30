@@ -37,9 +37,15 @@ if(WIN32)
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/include
     )
+    # MinGW 与 MSVC 使用不同的导入库文件名（.dll.a vs .lib）
+    if(MINGW)
+        set(NEXUS_SDL3_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/libSDL3.dll.a)
+    else()
+        set(NEXUS_SDL3_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib)
+    endif()
     target_link_libraries(NEXUS_UTILITIES
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
+            ${NEXUS_SDL3_LIB}
     )
 else()
     # Linux：优先 CMake Config 包，回退 pkg-config

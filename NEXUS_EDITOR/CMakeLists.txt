@@ -88,12 +88,24 @@ if(WIN32)
             ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer/include
             ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf/include
     )
+    # MinGW 与 MSVC 使用不同的导入库文件名（.dll.a vs .lib）
+    if(MINGW)
+        set(NEXUS_SDL3_LIB       ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/libSDL3.dll.a)
+        set(NEXUS_SDL3_IMAGE_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/lib/libSDL3_image.dll.a)
+        set(NEXUS_SDL3_MIXER_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer/lib/libSDL3_mixer.dll.a)
+        set(NEXUS_SDL3_TTF_LIB   ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf/lib/libSDL3_ttf.dll.a)
+    else()
+        set(NEXUS_SDL3_LIB       ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib)
+        set(NEXUS_SDL3_IMAGE_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/lib/SDL3_image.lib)
+        set(NEXUS_SDL3_MIXER_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer/lib/SDL3_mixer.lib)
+        set(NEXUS_SDL3_TTF_LIB   ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf/lib/SDL3_ttf.lib)
+    endif()
     target_link_libraries(NEXUS_EDITOR
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL/lib/SDL3.lib
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_image/lib/SDL3_image.lib
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_mixer/lib/SDL3_mixer.lib
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/SDL3_ttf/lib/SDL3_ttf.lib
+            ${NEXUS_SDL3_LIB}
+            ${NEXUS_SDL3_IMAGE_LIB}
+            ${NEXUS_SDL3_MIXER_LIB}
+            ${NEXUS_SDL3_TTF_LIB}
     )
 else()
     # Linux：优先 CMake Config 包，未安装时回退 pkg-config
@@ -185,16 +197,21 @@ if(WIN32)
     # SDL3_image / SDL3_mixer 的 lib/optional/ 下是可选格式解码库
     # （libpng/libwebp/libtiff/libogg/libopus 等）。核心 dll 已支持常见格式，
     # 但加载 webp/tiff/opus 等需这些 dll，统一拷贝以防运行时缺失。
-    add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${SDL_IMG_DIR}/lib/optional
-            $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
-    )
-    add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${SDL_MIX_DIR}/lib/optional
-            $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
-    )
+    # 注意：该目录随版本包可选提供，可能不存在，需先判断再拷贝。
+    if(EXISTS ${SDL_IMG_DIR}/lib/optional)
+        add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${SDL_IMG_DIR}/lib/optional
+                $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
+        )
+    endif()
+    if(EXISTS ${SDL_MIX_DIR}/lib/optional)
+        add_custom_command(TARGET NEXUS_EDITOR POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${SDL_MIX_DIR}/lib/optional
+                $<TARGET_FILE_DIR:NEXUS_EDITOR>/optional
+        )
+    endif()
 endif()
 
 # ---------- 拷贝 assets 资源到输出目录 ----------
