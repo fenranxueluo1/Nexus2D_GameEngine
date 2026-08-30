@@ -1,5 +1,6 @@
 # ---------- CMake ----------
 build/
+build-mingw*/
 out/
 CMakeFiles/
 CMakeCache.txt
@@ -26,10 +27,7 @@ Makefile
 *.lastbuildstate
 
 # ---------- 编译器/链接器产物 ----------
-*.o
-*.a
-*.so
-*.dylib
+
 
 # ---------- IDE ----------
 .vscode/
