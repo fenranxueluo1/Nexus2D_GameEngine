@@ -73,7 +73,9 @@ target_link_libraries(NEXUS_CORE
 #  LuaBridge3 只是绑定层，真正提供实现的是 Lua 库本身，必须显式链接。
 #
 #  注意：Lua 官方不提供 CMake Config 包，Linux 下统一用 find_path / find_library
-#  定位系统安装的版本（Fedora 为 5.4，位于 /usr/include 与 /usr/lib64）。
+#  定位系统安装的版本（Fedora 的 lua-devel、Ubuntu 的 liblua5.5-dev 等）。
+#  同时兼容 5.5 与 5.4 的常见命名：发行版头文件在 /usr/include/lua5.5/ 之类带版本号
+#  的目录，库名为 liblua5.5.so；源码安装则默认在 /usr/local/include 与 liblua.a。
 # ==============================================================================
 if(WIN32)
     # Windows：使用仓库内随附的 Lua 5.5
@@ -94,17 +96,19 @@ if(WIN32)
 else()
     # Linux：查找系统安装的 Lua（find_path / find_library 的结果会写入 CACHE，
     # 重复调用无副作用，也不存在导入目标的目录作用域问题）
+    # 优先匹配 5.5，找不到再回退 5.4 / 通用名 liblua
     find_path(NEXUS_CORE_LUA_INCLUDE_DIR
         NAMES lua.hpp lua.h
-        PATH_SUFFIXES lua lua5.4 lua-5.4
+        PATH_SUFFIXES lua5.5 lua-5.5 lua lua5.4 lua-5.4
     )
     find_library(NEXUS_CORE_LUA_LIBRARY
-        NAMES lua lua5.4 lua-5.4 lua54
+        NAMES lua5.5 lua-5.5 lua55 lua lua5.4 lua-5.4 lua54
     )
 
     if(NOT NEXUS_CORE_LUA_INCLUDE_DIR OR NOT NEXUS_CORE_LUA_LIBRARY)
         message(FATAL_ERROR
-            "未找到 Lua，请安装其开发包（例如 Fedora: sudo dnf install lua-devel）")
+            "未找到 Lua，请安装其开发包（例如 Ubuntu: sudo apt install liblua5.5-dev; "
+            "Fedora: sudo dnf install lua-devel）")
     endif()
 
     target_include_directories(NEXUS_CORE

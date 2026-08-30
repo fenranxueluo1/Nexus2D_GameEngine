@@ -1,0 +1,32 @@
+[
+  {
+    "label": "build NEXUS_EDITOR",
+    "command": "cmake --build build --target NEXUS_EDITOR -j",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "never",
+    "allow_concurrent_runs": false,
+    "tags": ["build"]
+  },
+  {
+    "label": "run NEXUS_EDITOR",
+    "command": "build/bin/NEXUS_EDITOR",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "never",
+    "allow_concurrent_runs": false,
+    "tags": ["run"]
+  },
+  {
+    "label": "build & run NEXUS_EDITOR",
+    "command": [
+      "cmake --build build --target NEXUS_EDITOR -j",
+      "build/bin/NEXUS_EDITOR"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "never",
+    "allow_concurrent_runs": false,
+    "tags": ["build", "run"]
+  }
+]

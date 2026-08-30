@@ -67,7 +67,7 @@ endif()
 | --- | --- | --- |
 | SDL3 / SDL3_image | `Dependencies/` 预编译库 | 系统库（必需） |
 | SDL3_mixer / SDL3_ttf | `Dependencies/` 预编译库 | 系统库（可选，缺失时跳过） |
-| Lua | `Dependencies/Lua_5.5`（5.5） | 系统库（Fedora 为 5.4） |
+| Lua | `Dependencies/Lua_5.5`（5.5） | 系统库（5.5 / 5.4 均可，优先 5.5） |
 | entt / glm / LuaBridge3 | 仓库内 header-only，无平台差异 | 同左 |
 | GLAD | 仓库内源码 | 仓库内源码（额外链接 `libdl`） |
 
@@ -75,7 +75,7 @@ endif()
 
 > **为何要 pkg-config 回退**：并非所有库都提供 CMake Config 包，例如 Fedora 上的 SDL3_mixer 只有 pkg-config。保留回退路径可避免因缺少 config 包而中断配置。
 
-> **Lua 版本差异**：Windows 使用随附的 5.5，Linux 使用系统发行版提供的 5.4。项目仅使用 `luaL_newstate` / `luaL_openlibs` / `lua_close` / `lua_pop` / `lua_tostring` 等稳定 API，LuaBridge3 对两者均兼容，实测无差异。
+> **Lua 版本差异**：Windows 使用随附的 5.5；Linux 由 CMake 自动查找，优先匹配 5.5（`/usr/include/lua5.5` + `liblua5.5.so`），找不到再回退 5.4 或通用名 `liblua`。项目仅使用 `luaL_newstate` / `luaL_openlibs` / `lua_close` / `lua_pop` / `lua_tostring` 等稳定 API，仓库内的 LuaBridge3 已适配 5.5（`lua_newstate` 新增 seed 参数的签名变化已处理），对 5.4 / 5.5 均兼容。
 
 ## 项目结构
 
@@ -83,6 +83,8 @@ endif()
 Nexus2D/
 ├── CMakeLists.txt              # 顶层 CMake，设置标准/输出目录并引入 NEXUS_EDITOR
 ├── LICENSE                     # GPL-3.0
+├── .clangd                     # clangd 配置（编译数据库指向 build/）
+├── .zed/                       # Zed 编辑器配置（settings.json / tasks.json）
 ├── Dependencies/
 │   ├── SDL/                    # SDL3 预编译库与头文件（Windows）
 │   ├── SDL3_image/             # SDL3 图像加载扩展（Windows）
@@ -182,11 +184,16 @@ NEXUS_EDITOR (executable)
 # Fedora / RHEL
 sudo dnf install SDL3-devel SDL3_image-devel SDL3_mixer-devel SDL3_ttf-devel lua-devel
 
-# Debian / Ubuntu
-sudo apt install libsdl3-dev libsdl3-image-dev libsdl3-mixer-dev libsdl3-ttf-dev liblua5.4-dev
+# Debian / Ubuntu（25.04+）
+sudo apt install libsdl3-dev libsdl3-image-dev libsdl3-mixer-dev libsdl3-ttf-dev liblua5.5-dev
 ```
 
 其中 `SDL3_mixer` 与 `SDL3_ttf` 为可选依赖：当前代码尚未使用，缺失时 CMake 会跳过而不中断配置。
+
+注意事项：
+- `SDL3_*` 系列需要较新的发行版（Ubuntu 25.04+、Fedora 44+）；Ubuntu 24.04 及更老无官方 SDL3 包，需自行从 [SDL 官网](https://github.com/libsdl-org/SDL) 编译安装或升级发行版
+- Lua 装 5.4（`liblua5.4-dev`）同样可用，CMake 会自动匹配，无需改动
+- 部分发行版自带 CMake 版本过低（如 Ubuntu 24.04 默认为 3.28，低于要求的 4.3），可用 `pip install --user cmake` 升级
 
 ### 构建
 
@@ -207,9 +214,11 @@ cmake --build build
 #### Linux
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j$(nproc)
 ```
+
+`-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` 会生成 `build/compile_commands.json`，供 clangd 智能提示使用（见下文「Zed 编辑器配置」）；如不使用 clangd 可省略。
 
 构建产物位于 `build/bin/`，静态库位于 `build/lib/`。
 
@@ -227,6 +236,39 @@ cmake --build build -j$(nproc)
 ```
 
 启动后会创建一个 640×480 的窗口，加载 `assets/scripts/main.lua` 创建两个实体（`TestEntity` / `BigTesty`）并挂载变换/精灵/动画组件，脚本驱动其平移、旋转与呼吸缩放；同时接入输入系统（键盘 / 鼠标 / 手柄，支持热插拔）。按 `ESC` 或关闭窗口即可退出。
+
+## Zed 编辑器配置
+
+仓库随附了 Zed 的项目级配置（随 git 分发，`git pull` 后即生效）：
+
+| 文件 | 作用 |
+| --- | --- |
+| `.zed/settings.json` | clangd 语言服务器设置（强制使用系统 PATH 中的 clangd，避免与发行版 libstdc++ 头文件不匹配） |
+| `.zed/tasks.json` | 构建 / 运行 / 构建并运行 三个任务（`Ctrl+Shift+P` → `tasks: spawn` 选择） |
+| `.clangd` | 项目根 clangd 配置，以相对路径 `CompilationDatabase: build` 指向编译数据库，换机器 / 换平台无需改动 |
+
+### 前置要求
+
+```bash
+# Debian / Ubuntu
+sudo apt install clangd
+```
+
+### 首次配置
+
+clangd 依赖 `build/compile_commands.json`，首次需按上文 Linux 构建命令带 `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` 配置，或直接执行：
+
+```bash
+rm -rf build
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build --target NEXUS_EDITOR -j$(nproc)
+```
+
+之后用 Zed 打开**项目根目录**（保证 `.clangd` 与 `build/` 在项目根下），等待 clangd 完成索引（首次约几十秒），即可获得代码补全 / 定义跳转 / 诊断。按 `Ctrl+Shift+P` → `tasks: spawn` 选择 **build & run NEXUS_EDITOR** 即可一键构建运行。
+
+> **注意**：若 configure 曾因缺少依赖失败，CMake 会把 `*_LIBRARY` / `*_INCLUDE_DIR` 的 `NOTFOUND` 结果写入缓存，重试前应 `rm -rf build` 重新配置，否则 find 命令会直接复用缓存的失败结果。
+>
+> 调试：可在 `.zed/debug.json` 增加 CodeLLDB 配置（`program: $ZED_WORKTREE_ROOT/build/bin/NEXUS_EDITOR`）。
 
 ## 核心模块说明
 

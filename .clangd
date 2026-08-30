@@ -1,0 +1,5 @@
+CompilationDatabase: build
+CompileFlags:
+  Compiler: g++
+Diagnostics:
+  UnusedIncludes: None

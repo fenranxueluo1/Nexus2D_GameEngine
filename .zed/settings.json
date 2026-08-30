@@ -1,0 +1,10 @@
+{
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "ignore_system_version": true,
+        "arguments": []
+      }
+    }
+  }
+}
