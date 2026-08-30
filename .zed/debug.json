@@ -1,20 +1,11 @@
 [
   {
-    "label": "Debug NEXUS_EDITOR (Windows / CodeLLDB)",
-    "adapter": "CodeLLDB",
-    "request": "launch",
-    "program": "NEXUS_EDITOR.exe",
-    "cwd": "$ZED_WORKTREE_ROOT/build/bin",
-    "stopOnEntry": false,
-    "build": "CMake: Build (Debug)"
-  },
-  {
-    "label": "Debug NEXUS_EDITOR (Linux / GDB)",
+    "label": "Debug NEXUS_EDITOR (GDB)",
     "adapter": "GDB",
     "request": "launch",
-    "program": "NEXUS_EDITOR",
+    "program": "$ZED_WORKTREE_ROOT/build/bin/NEXUS_EDITOR",
     "cwd": "$ZED_WORKTREE_ROOT/build/bin",
     "stopAtBeginningOfMainSubprogram": false,
-    "build": "CMake: Build (Debug)"
+    "build": "CMake: 生成 (Build)"
   }
 ]

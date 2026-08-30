@@ -1,42 +1,45 @@
 [
   {
-    "label": "CMake: Configure (Windows)",
-    "command": "cmake",
-    "args": ["--preset", "windows-debug"],
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "reveal": "always",
-    "hide": "on_success"
-  },
-  {
-    "label": "CMake: Configure (Linux)",
+    "label": "CMake: 配置 (Configure)",
     "command": "cmake",
     "args": ["--preset", "linux-debug"],
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "reveal": "always",
-    "hide": "on_success"
-  },
-  {
-    "label": "CMake: Build (Debug)",
-    "command": "cmake",
-    "args": ["--build", "build", "-j", "16"],
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always",
     "hide": "on_success",
     "allow_concurrent_runs": false
   },
   {
-    "label": "CMake: Build Then Run",
-    "command": "cmake --build build -j 16 && cd build/bin && NEXUS_EDITOR",
+    "label": "CMake: 生成 (Build)",
+    "command": "sh",
+    "args": [
+      "-c",
+      "[ -f build/CMakeCache.txt ] || cmake --preset linux-debug && cmake --build --preset linux-debug"
+    ],
     "cwd": "$ZED_WORKTREE_ROOT",
     "reveal": "always",
-    "allow_concurrent_runs": true
+    "hide": "on_success",
+    "allow_concurrent_runs": false
   },
   {
-    "label": "Run NEXUS_EDITOR",
-    "command": "NEXUS_EDITOR",
+    "label": "▶ 编译并运行",
+    "command": "sh",
+    "args": [
+      "-c",
+      "[ -f build/CMakeCache.txt ] || cmake --preset linux-debug && cmake --build --preset linux-debug && cd build/bin && ./NEXUS_EDITOR"
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "reveal": "always",
+    "hide": "on_success",
+    "allow_concurrent_runs": false,
+    "use_new_terminal": true
+  },
+  {
+    "label": "▶ 运行 (不编译)",
+    "command": "./NEXUS_EDITOR",
     "cwd": "$ZED_WORKTREE_ROOT/build/bin",
-    "use_new_terminal": true,
-    "allow_concurrent_runs": true,
-    "reveal": "always"
+    "reveal": "always",
+    "hide": "on_success",
+    "allow_concurrent_runs": false,
+    "use_new_terminal": true
   }
 ]

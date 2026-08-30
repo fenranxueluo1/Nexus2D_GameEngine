@@ -45,65 +45,65 @@ main = {
 		update = function()
 			if rotation >= 360 then
 				rotation = 0
-			end 
+			end
 
-			if move_right and x_pos < 300 then 
-				x_pos = x_pos + 3 
+			if move_right and x_pos < 300 then
+				x_pos = x_pos + 3
 				value = value + 0.01
-			elseif move_right and x_pos >= 300 then 
+			elseif move_right and x_pos >= 300 then
 				move_right = false
-			end 
+			end
 
-			if not move_right and x_pos > 10 then 
+			if not move_right and x_pos > 10 then
 				x_pos = x_pos - 3
-				value = value - 0.01 
-			elseif not move_right  and x_pos <= 10 then 
-				move_right = true 
-			end 
+				value = value - 0.01
+			elseif not move_right  and x_pos <= 10 then
+				move_right = true
+			end
 
-			
+
 			transform.position.x = x_pos
-			transform.rotation = rotation 
-			
-			if move_right then 
+			transform.rotation = rotation
+
+			if move_right then
 				rotation = rotation + 9
 			else
 				rotation = rotation - 9
-			end 
+			end
 
-			scale = math.sin(value) * 10 
+			scale = math.sin(value) * 10
 
-			if scale >= 10 then 
-				scale = 10 
-			elseif scale <= 1 then 
-				scale = 1 
-			end 
+			if scale >= 10 then
+				scale = 10
+			elseif scale <= 1 then
+				scale = 1
+			end
 
-			if value >= 1 then 
-				value = 1 
+			if value >= 1 then
+				value = 1
 			elseif value <= 0 then
 				value = 0
-			end 
+			end
 
 			transform.scale = vec2(scale, scale)
 
 			--[[
-			if Keyboard.pressed(KEY_W) then 
+			if Keyboard.pressed(KEY_W) then
 				print("Key W was just pressed")
-			elseif Keyboard.pressed(KEY_S) then 
+			elseif Keyboard.pressed(KEY_S) then
 				print("Key S was just pressed")
-			elseif Keyboard.pressed(KEY_A) then 
+			elseif Keyboard.pressed(KEY_A) then
 				print("Key A was just pressed")
-			elseif Keyboard.pressed(KEY_D) then 
+			elseif Keyboard.pressed(KEY_D) then
 				print("Key D was just pressed")
 			end
 
 			if Mouse.just_pressed(LEFT_BTN) then
 				print("Mouse Left Button Pressed")
 			elseif Mouse.just_pressed(MIDDLE_BTN) then
-				print("Mouse MIDDLE Button Pressed") 
+				print("Mouse MIDDLE Button Pressed")
 			elseif Mouse.just_pressed(RIGHT_BTN) then
-				print("Mouse RIGHT Button Pressed") 
+				print("Mouse RIGHT Button Pressed")
 			end
 
 			local rstick_LR = Gamepad.get_axis_position(1, 2)
@@ -125,7 +125,7 @@ main = {
 	},
 	[2] = {
 		render = function()
-			
+
 		end
 	},
 }
